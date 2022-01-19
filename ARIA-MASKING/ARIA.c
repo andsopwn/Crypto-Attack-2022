@@ -222,7 +222,7 @@ void Crypto(const u8 *PT, int R, const u8 *RK, u8 *CT)
   
 	for(j = 0 ; j < 16 ; j++) CT[j] = PT[j];
     
-	for(i = 0 ; i < R/2 ; i++)
+	for(i = 0 ; i < R / 2 ; i++) // ENC_KeySchedule(MK, RK, 192) -> 14;
 	{
 		for (j = 0; j < 16; j++) T[j] = S[j % 4][RK[j] ^ CT[j]];
 		DiffLayer(T, CT); RK += 16;
@@ -249,7 +249,6 @@ void ARIA()
 		MK[i] = i * 0x11;
 	for(i = 16; i < 24 ; i++)
 		MK[i]= (i - 16) * 0x11;
-
 
     Crypto(PT, ENC_KeySchedule(MK, RK, 192), RK, CT);
     
