@@ -11,6 +11,12 @@
 #define ptFN "plaintext.txt"
 #define ctFN "ciphertext.txt"
 #define OS 1
+#define RotWord(x) ((x<<8) | (x>>24))
+#define SubWord(x)  \
+    ((u32)Sbox[(u8)(x >> 24)] << 24) \
+    | ((u32)Sbox[(u8)((x >> 16) & 0xFF)] << 16) \
+    | ((u32)Sbox[(u8)((x >> 8) & 0xFF)] << 8) \
+    | ((u32)Sbox[(u8)(x & 0xff)]) \
 // 0 : Windows, 1 : MAC, 2 : VM Linux
 #if OS == 0
     #define DIR "C:\\Users\\louxsoen\\Documents\\부채널연구\\AES CPA\\"
@@ -20,6 +26,7 @@
     #define textSize 34 
 #endif
 typedef unsigned char u8;
+typedef unsigned int u32;
 u8      M[10];
 u8      MSbox[256];
 u8      Rcon[10] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
@@ -41,7 +48,14 @@ u8      Sbox[256] = {
     0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 
     };
-/*
+
+void prt(u8 *S)
+{
+    for(int i = 0 ; i < 16 ; i++)
+    printf("%02X ", S[i]);
+    puts("");
+}
+
 void AddRoundKey(u8 *S, u8 *RK)
 {
     S[0] ^= RK[0]; S[1] ^= RK[1]; S[2] ^= RK[2]; S[3] ^= RK[3];
@@ -51,10 +65,11 @@ void AddRoundKey(u8 *S, u8 *RK)
 }
 void SubBytes(u8 S[16])
 {
-    S[0] = Sbox[S[0]]; S[1] = Sbox[S[1]]; S[2] = Sbox[S[2]]; S[3] = Sbox[S[3]];
-    S[4] = Sbox[S[4]]; S[5] = Sbox[S[5]]; S[6] = Sbox[S[6]]; S[7] = Sbox[S[7]];
-    S[8] = Sbox[S[8]]; S[9] = Sbox[S[9]]; S[10] = Sbox[S[10]]; S[11] = Sbox[S[11]];
-    S[12] = Sbox[S[12]]; S[13] = Sbox[S[13]]; S[14] = Sbox[S[14]]; S[15] = Sbox[S[15]];
+
+    S[0] = MSbox[S[0] ^ M[0]]; S[1] = MSbox[S[1] ^ M[0]]; S[2] = MSbox[S[2] ^ M[0]]; S[3] = MSbox[S[3] ^ M[0]];
+    S[4] = MSbox[S[4] ^ M[0]]; S[5] = MSbox[S[5] ^ M[0]]; S[6] = MSbox[S[6] ^ M[0]]; S[7] = MSbox[S[7] ^ M[0]];
+    S[8] = MSbox[S[8] ^ M[0]]; S[9] = MSbox[S[9] ^ M[0]]; S[10] = MSbox[S[10] ^ M[0]]; S[11] = MSbox[S[11] ^ M[0]];
+    S[12] = MSbox[S[12] ^ M[0]]; S[13] = MSbox[S[13] ^ M[0]]; S[14] = MSbox[S[14] ^ M[0]]; S[15] = MSbox[S[15] ^ M[0]];
 }
 void Shiftrows(u8 *S)
 {
@@ -62,8 +77,30 @@ void Shiftrows(u8 *S)
     temp = S[1]; S[1] = S[5]; S[5] = S[9]; S[9] = S[13]; S[13] = temp;
     temp = S[2]; S[2] = S[10]; S[10] = temp; temp = S[6]; S[6] = S[14]; S[14] = temp;
     temp = S[15]; S[15] = S[11]; S[11] = S[7]; S[7] = S[3]; S[3] = temp;
+    for(int i = 0 ; i < 16 ; i++)
+        S[i] ^= M[1];
 }
-*/
+
+void Submix(u8 *in)
+{
+   unsigned char tmp[4];
+
+   tmp[0] = MUL2(in[0]) ^ MUL3(in[1]) ^ in[2] ^ in[3];
+   tmp[1] = in[0] ^ MUL2(in[1]) ^ MUL3(in[2]) ^ in[3];
+   tmp[2] = in[0] ^ in[1] ^ MUL2(in[2]) ^ MUL3(in[3]);
+   tmp[3] = MUL3(in[0]) ^ in[1] ^ in[2] ^ MUL2(in[3]);
+
+   in[0] = tmp[0]; in[1] = tmp[1]; in[2] = tmp[2]; in[3] = tmp[3];
+}
+
+void Mixcolumns(u8 *S)
+{
+   Submix(S);
+   Submix(S + 4);
+   Submix(S + 8);
+   Submix(S + 12);
+}
+
 void KeyZone1(u8 *IN, u8 *OUT, u8 i)
 {
     u8 temp[4];
@@ -84,19 +121,68 @@ void KeyZone1(u8 *IN, u8 *OUT, u8 i)
     OUT[3] = IN[3] ^ temp[3] ^ M[1];
 }
 
-void KeyExpansion(u8 *MK, u8 *RK)
+u32 u4byte_in(u8 *x)
 {
-    for(int i = 0 ; i < 16 ; i += 4)
+    return (x[0] << 24) | (x[1] << 16) | (x[2] << 8) | x[3];
+}
+
+void u4byte_out(u8 *x, u32 y)
+{
+    x[0] = (y >> 24) & 0xFF;
+    x[1] = (y >> 16) & 0xFF;
+    x[2] = (y >> 8) & 0xFF;
+    x[3] = y & 0xFF;
+}
+
+void AES_KeyWordToByte(u32 W[], u8 RK[])
+{
+    int i;
+    for(i = 0 ; i < 44 ; i++)
+    u4byte_out(RK + 4 * i, W[i]); 
+}
+
+u32 Rcons[10] = { 0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000, 0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000 };
+
+void RoundkeyGeneration128(u8 MK[], u8 RK[])
+{
+    u32 W[44];
+    int i;
+    u32 T;
+
+    W[0] = u4byte_in(MK); // W[0] = MK[0] || MK[1] || MK[2] || MK[3]
+    W[1] = u4byte_in(MK + 4);
+    W[2] = u4byte_in(MK + 8);
+    W[3] = u4byte_in(MK + 12);
+
+    for(i = 0 ; i < 10 ; i++)
     {
-        RK[i] = MK[i] ^ M[6] ^ M[0];
-        RK[i + 1] = MK[i + 1] ^ M[7] ^ M[0];
-        RK[i + 2] = MK[i + 2] ^ M[8] ^ M[0];
-        RK[i + 3] = MK[i + 3] ^ M[9] ^ M[0];
+        //T = G_func(W[4 * i + 3])
+        T = W[4 * i + 3];
+        T = RotWord(T);
+        T = SubWord(T);
+        T ^= Rcons[i];
+
+        W[4 * i + 4] = W[4 * i] ^ T;
+        W[4 * i + 5] = W[4 * i + 1] ^ W[4 * i + 4];
+        W[4 * i + 6] = W[4 * i + 2] ^ W[4 * i + 5];
+        W[4 * i + 7] = W[4 * i + 3] ^ W[4 * i + 6];
     }
-    for(int i = 0 ; i < 9 ; i++)
-    {
-        KeyZone1(RK, RK + 16, i);
-    }
+    AES_KeyWordToByte(W, RK);
+}
+
+void AES_KeySchedule(u8 MK[], u8 RK[], int keysize)
+{
+    if(keysize == 128)    RoundkeyGeneration128(MK, RK);
+    //if(keysize == 192)    RoundkeyGeneration192(MK, RK);
+    //if(keysize == 256)    RoundkeyGeneration256(MK, RK);
+}
+
+void AddMasking(u8 *S, u8 *M)
+{
+    S[ 0] ^= M[6]; S[ 1] ^= M[7]; S[ 2] ^= M[8]; S[ 3] ^= M[9];
+    S[ 4] ^= M[6]; S[ 5] ^= M[7]; S[ 6] ^= M[8]; S[ 8] ^= M[9];
+    S[ 8] ^= M[6]; S[ 9] ^= M[7]; S[10] ^= M[8]; S[11] ^= M[9];
+    S[12] ^= M[6]; S[13] ^= M[7]; S[14] ^= M[8]; S[15] ^= M[9];
 }
 
 int main()
@@ -104,10 +190,10 @@ int main()
     u8      PT[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
     u8      MK[16] = { 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10 };
     u8      CT[16] = { 0x00, };
-    u8      RK[160] = { 0x00, };
-
-
-
+    u8      RK[176] = { 0x00, };
+    int     keysize = 128;
+    int     Nr = keysize / 32 + 6;
+    int     i;
     M[0] = rand();
     M[1] = rand();
     M[2] = rand();
@@ -118,15 +204,26 @@ int main()
     M[7] = M[2] ^ MUL2(M[3]) ^ MUL3(M[4]) ^ M[5];
     M[8] = M[2] ^ M[3] ^ MUL2(M[4]) ^ MUL3(M[5]);
     M[9] = MUL3(M[2]) ^ M[3] ^ M[4] ^ MUL2(M[5]);
-
     // MaskedSBOX[i ^ M0] = SBOX[i] ^ M1
     for(int i = 0 ; i < 256 ; i++) 
         MSbox[i ^ M[0]] = Sbox[i] ^ M[1];
-    
-    M[2] ^= M[1];
-    M[3] ^= M[1];
-    M[4] ^= M[1];
-    M[5] ^= M[1];
 
+    AES_KeySchedule(MK, RK, keysize);
     
+    for(i = 0 ; i < 16 ; i++)
+        CT[i] = PT[i];
+    AddMasking(CT, M);
+    AddRoundKey(CT, RK);
+    AddMasking(CT, M);
+    for(int i = 0 ; i < Nr - 1 ; i++)
+    {  
+        SubBytes(CT);
+        Shiftrows(CT);
+        Mixcolumns(CT);
+        AddRoundKey(CT, RK + 16 * (i + 1));
+    }
+    SubBytes(CT);
+    Shiftrows(CT);
+    AddRoundKey(CT, RK + 16 * 10); 
+    prt(CT);
 }

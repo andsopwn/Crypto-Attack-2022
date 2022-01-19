@@ -494,19 +494,21 @@ void Key_Expansion(u8* MK, u8 M1, u8 M2, u8 M3) {
    
    ENC_RoundKey(W0, W1, W2, W3, M3);
 }
-void masking(u8 *in, u8 *out, u8 M1, u8 M2) { // 4, 6) 입출력 16바이트를 마스킹한다.
+// 4, 6) 입출력 16바이트를 마스킹한다.
+void masking(u8 *in, u8 *out, u8 M1, u8 M2) { 
    out[ 0] = in[ 0] ^ M2; out[ 1] = in[ 1] ^ M2; out[ 2] = in[ 2] ^ M1; out[ 3] = in[ 3] ^ M1; // m'm'mm
    out[ 4] = in[ 4] ^ M2; out[ 5] = in[ 5] ^ M2; out[ 6] = in[ 6] ^ M1; out[ 7] = in[ 7] ^ M1; // m'm'mm
    out[ 8] = in[ 8] ^ M2; out[ 9] = in[ 9] ^ M2; out[10] = in[10] ^ M1; out[11] = in[11] ^ M1; // m'm'mm
    out[12] = in[12] ^ M2; out[13] = in[13] ^ M2; out[14] = in[14] ^ M1; out[15] = in[15] ^ M1; // m'm'mm
 }
-void XOR8(u8* in, u8* out, u8 M3) { // 5) 각 라운드에서 확산 계층 연산 후 16바이트 중간 값중 8바이트를 XOR 연산한다.
+// 5) 각 라운드에서 확산 계층 연산 후 16바이트 중간 값중 8바이트를 XOR 연산한다.
+void XOR8(u8* in, u8* out, u8 M3) { 
    out[ 0] = in[ 0]; out[ 1] = in[ 1]; out[ 2] = in[ 2]; out[ 3] = in[ 3];                     // 0000
    out[ 4] = in[ 4] ^ M3; out[ 5] = in[ 5] ^ M3; out[ 6] = in[ 6] ^ M3; out[ 7] = in[ 7] ^ M3; // m''m''m''m''
    out[ 8] = in[ 8]; out[ 9] = in[ 9]; out[10] = in[10]; out[11] = in[11];                     // 0000
    out[12] = in[12] ^ M3; out[13] = in[13] ^ M3; out[14] = in[14] ^ M3; out[15] = in[15] ^ M3; // m''m''m''m''
 }
-//암호화 과정
+// 암호화
 void Encryption(u8* PT, u8* CT, u8 M1, u8 M2, u8 M3) {
 
    u8 out[16];
@@ -549,7 +551,6 @@ void Encryption(u8* PT, u8* CT, u8 M1, u8 M2, u8 M3) {
    masking(PT, CT, M1, M2);
 }
 
-//메인문
 int main()
 {
    u8 PT[16] = { 0x11, 0x11, 0x11, 0x11, 0xaa, 0xaa, 0xaa, 0xaa, 0x11, 0x11, 0x11, 0x11, 0xbb, 0xbb, 0xbb, 0xbb };
@@ -568,20 +569,20 @@ int main()
    // 마스크 SBOX 생성
    for(int i = 0; i < 256; i++) 
    {
-      int u = i ^ M1;
-      int v = SBOX1[i] ^ M2;
-      int w = SBOX2[i] ^ M2;
+      int m0 = i ^ M1;
+      int m1 = SBOX1[i] ^ M2;
+      int m2 = SBOX2[i] ^ M2;
 
-      MSBOX1[u] = v;
-      MSBOX2[u] = w;
-      MSBOX3[v] = u;
-      MSBOX4[w] = u;
+      MSBOX1[m0] = m1;
+      MSBOX2[m0] = m2;
+      MSBOX3[m1] = m0;
+      MSBOX4[m2] = m0;
    }
 
    Key_Expansion(MK, M1, M2, M3);
    Encryption(PT, CT, M1, M2, M3);
-   puts("");
    prt(CT);
+   puts("");
 
    return 0;
 }
