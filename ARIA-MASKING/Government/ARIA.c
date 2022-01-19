@@ -3,6 +3,7 @@
 
 typedef unsigned char u8;
 
+u8 MS[4][256] = { 0x00, };
 const u8    S[4][256] = {
     // Sbox Type 1
 {
@@ -81,7 +82,6 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-
 // Round Key Generation Constant (RCON)
 const u8    KRK[3][16] = {
 { 
@@ -96,6 +96,13 @@ const u8    KRK[3][16] = {
     0xdb, 0x92, 0x37, 0x1d, 0x21, 0x26, 0xe9, 0x70, 0x03, 0x24, 0x97, 0x75, 0x04, 0xe8, 0xc9, 0x0e
     }
 };
+
+void prt(u8 *S)
+{
+    for(int i = 0 ; i < 16 ; i++)
+    printf("%02X ", S[i]);
+    puts("");
+}
 
 void DiffLayer(const u8 *IN, u8 *OUT)
 {
@@ -138,7 +145,6 @@ void RotateXOR(const u8 *IN, int n, u8 *OUT)
         OUT[(q + i + 1) % 16] ^= (IN[i] << (8 - n));
     }
 }
-
 // W0 >: MasterKey
 int ENC_KeySchedule(const u8 *MK, u8 *RK, int keysize)
 {
@@ -215,7 +221,7 @@ int DEC_KeySchedule(const u8 *MK, u8 *RK, int keysize)
 	return R;
 }
 
-void Crypto(const u8 *PT, int R, const u8 *RK, u8 *CT)
+void Crypto(const u8 *PT, int R, const u8 *RK, u8 *CT, u8 *M)
 {
 	u8      T[16];
 	int     i, j;
@@ -224,46 +230,50 @@ void Crypto(const u8 *PT, int R, const u8 *RK, u8 *CT)
     
 	for(i = 0 ; i < R / 2 ; i++) // ENC_KeySchedule(MK, RK, 192) -> 14;
 	{
-		for (j = 0; j < 16; j++) T[j] = S[j % 4][RK[j] ^ CT[j]];
-		DiffLayer(T, CT); RK += 16;
-		for (j = 0; j < 16; j++) T[j] = S[(2 + j) % 4][RK[j] ^ CT[j]];
-		DiffLayer(T, CT); RK += 16;
-	}
+		for (j = 0; j < 16; j++) 
+        T[j] = S[j % 4][RK[j] ^ CT[j]]; // S-Box Layer Type 1 
+		DiffLayer(T, CT); RK += 16;     // Diffusion Layer
+        
+		for (j = 0; j < 16; j++)
+        T[j] = S[(2 + j) % 4][RK[j] ^ CT[j]];   // S-Box Layer Type 2
+		DiffLayer(T, CT); RK += 16;     // Diffusion Layer
+        
+	}   
 	DiffLayer(CT, T);
-
 	for(j = 0; j < 16; j++) CT[j] = RK[j] ^ T[j];
 }
+
 
 void ARIA()
 {
     u8      RK[272] = { 0x00, }; // RoundKey 16 * 17
-    u8      MK[32] = { 0x00, };  // MasterKey
+    u8      MK[32] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };  // MasterKey
     u8      PT[16] = { 0x11, 0x11, 0x11, 0x11, 0xaa, 0xaa, 0xaa, 0xaa, 0x11, 0x11,0x11, 0x11, 0xbb, 0xbb, 0xbb, 0xbb };
     u8      CT[16] = { 0x00, };
+    u8      M[10] = { 0x00, }; // Masking Layer
     int     i;
-    
-    const u8 Result[] = { 0x8d, 0x14, 0x70, 0x62, 0x5f, 0x59, 0xeb, 0xac, 0xb0, 0xe5, 0x5b, 0x53, 0x4b, 0x3e, 0x46, 0x2b };
-    
-    // MasterKey Test
-    for(i = 0 ; i < 16 ; i++)
-		MK[i] = i * 0x11;
-	for(i = 16; i < 24 ; i++)
-		MK[i]= (i - 16) * 0x11;
 
-    Crypto(PT, ENC_KeySchedule(MK, RK, 192), RK, CT);
-    
-    for(int i = 0 ; i < 16 ; i++)
-        printf("%02X ", PT[i]);
-    puts("");
-    for(int i = 0 ; i < 32 ; i++)
-        printf("%02X ", MK[i]);
-    puts("");
-    for(int i = 0 ; i < 16 ; i++)
-        printf("%02X ", CT[i]);
-    
+    Crypto(PT, ENC_KeySchedule(MK, RK, 128), RK, CT, M);
+    prt(CT);
 }
 
 int main()
 {
     ARIA();
 }
+
+/*
+    Encryption Test Vector
+    1 round : 71 f2 58 e5 33 a1 25 79 48 29 48 8f 65 5d 8f f6 
+    2 round : d5 b0 6a 76 fb 8b 55 96 3f c4 4b 2f 03 f0 70 4d 
+    3 round : 8d 40 db a4 e1 86 bb 7b bf d9 c1 57 04 4b 24 74 
+    4 round : 6c 07 61 05 c3 1e 92 ac ab 19 8d 71 59 a3 04 6c 
+    5 round : ae 5c 56 34 83 ff 97 9e be e0 78 c6 94 3d 7f e8 
+    6 round : 83 4c bc 0e 00 c0 5e 66 d4 04 36 19 f6 6c 61 71 
+    7 round : 4f 6b f4 a8 2a 33 7b 1d e1 fb 5d 56 7b f7 01 42 
+    8 round : b8 34 ab 22 69 87 b9 99 f4 dc ba 5d 24 a5 c3 37 
+    9 round : 48 c9 b1 56 b1 f1 8d 37 73 19 57 f5 11 e9 c9 7b
+    10 round : 18 c0 6a 98 d0 d5 e3 4a 9f 63 a2 94 39 56 1c 6f 
+    11 round : 4f f0 7f d1 78 83 28 84 29 3a 5f 91 5f f6 34 bb 
+    12 round : c6 ec d0 8e 22 c3 0a bd b2 15 cf 74 e2 07 5e 6e
+*/

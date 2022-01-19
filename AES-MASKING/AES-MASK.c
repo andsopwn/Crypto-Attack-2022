@@ -68,10 +68,10 @@ void KeyZone1(u8 *IN, u8 *OUT, u8 i)
 {
     u8 temp[4];
 
-    temp[0] = IN[13] ^ M[3]; // 수정
-    temp[1] = IN[14] ^ M[4];
-    temp[2] = IN[15] ^ M[5];
-    temp[3] = IN[12] ^ M[2];
+    temp[0] = IN[13] ^ M[7]; // 수정
+    temp[1] = IN[14] ^ M[8];
+    temp[2] = IN[15] ^ M[9];
+    temp[3] = IN[12] ^ M[6];
     
     temp[0] = MSbox[temp[0]] ^ Rcon[i];
     temp[1] = MSbox[temp[1]];
