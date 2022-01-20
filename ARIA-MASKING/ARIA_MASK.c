@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 typedef unsigned char u8;
 // Encryption Key 선언
@@ -117,26 +117,38 @@ void difflayer(u8 *out) {
 }
 // Encryption ODD
 void ENC_ODD(u8* in, u8* K, u8* out) {
-   out[ 0] = MSBOX1[in[ 0] ^ K[ 0]]; out[ 1] = MSBOX2[in[ 1] ^ K[ 1]]; out[ 2] = MSBOX3[in[ 2] ^ K[ 2]]; out[ 3] = MSBOX4[in[ 3] ^ K[ 3]];
-   out[ 4] = MSBOX1[in[ 4] ^ K[ 4]]; out[ 5] = MSBOX2[in[ 5] ^ K[ 5]]; out[ 6] = MSBOX3[in[ 6] ^ K[ 6]]; out[ 7] = MSBOX4[in[ 7] ^ K[ 7]];
-   out[ 8] = MSBOX1[in[ 8] ^ K[ 8]]; out[ 9] = MSBOX2[in[ 9] ^ K[ 9]]; out[10] = MSBOX3[in[10] ^ K[10]]; out[11] = MSBOX4[in[11] ^ K[11]];
-   out[12] = MSBOX1[in[12] ^ K[12]]; out[13] = MSBOX2[in[13] ^ K[13]]; out[14] = MSBOX3[in[14] ^ K[14]]; out[15] = MSBOX4[in[15] ^ K[15]];
+   out[ 0] = MSBOX1[in[ 0] ^ K[ 0]]; out[ 1] = MSBOX2[in[ 1] ^ K[ 1]]; 
+   out[ 2] = MSBOX3[in[ 2] ^ K[ 2]]; out[ 3] = MSBOX4[in[ 3] ^ K[ 3]];
+   out[ 4] = MSBOX1[in[ 4] ^ K[ 4]]; out[ 5] = MSBOX2[in[ 5] ^ K[ 5]]; 
+   out[ 6] = MSBOX3[in[ 6] ^ K[ 6]]; out[ 7] = MSBOX4[in[ 7] ^ K[ 7]];
+   out[ 8] = MSBOX1[in[ 8] ^ K[ 8]]; out[ 9] = MSBOX2[in[ 9] ^ K[ 9]]; 
+   out[10] = MSBOX3[in[10] ^ K[10]]; out[11] = MSBOX4[in[11] ^ K[11]];
+   out[12] = MSBOX1[in[12] ^ K[12]]; out[13] = MSBOX2[in[13] ^ K[13]]; 
+   out[14] = MSBOX3[in[14] ^ K[14]]; out[15] = MSBOX4[in[15] ^ K[15]];
    difflayer(out);
 }
-// Encryption EVEN
+// Encryption EVEN in : 중간값 out, K : RoundKey, out : PT
 void ENC_EVEN(u8* in, u8* K, u8* out) {
-   out[ 0] = MSBOX3[in[ 0] ^ K[ 0]]; out[ 1] = MSBOX4[in[ 1] ^ K[ 1]];   out[ 2] = MSBOX1[in[ 2] ^ K[ 2]]; out[ 3] = MSBOX2[in[ 3] ^ K[ 3]];
-   out[ 4] = MSBOX3[in[ 4] ^ K[ 4]]; out[ 5] = MSBOX4[in[ 5] ^ K[ 5]];   out[ 6] = MSBOX1[in[ 6] ^ K[ 6]]; out[ 7] = MSBOX2[in[ 7] ^ K[7]];
-   out[ 8] = MSBOX3[in[ 8] ^ K[ 8]]; out[ 9] = MSBOX4[in[ 9] ^ K[ 9]];   out[10] = MSBOX1[in[10] ^ K[10]]; out[11] = MSBOX2[in[11] ^ K[11]];
-   out[12] = MSBOX3[in[12] ^ K[12]]; out[13] = MSBOX4[in[13] ^ K[13]];   out[14] = MSBOX1[in[14] ^ K[14]]; out[15] = MSBOX2[in[15] ^ K[15]];
+   out[ 0] = MSBOX3[in[ 0] ^ K[ 0]]; out[ 1] = MSBOX4[in[ 1] ^ K[ 1]]; 
+   out[ 2] = MSBOX1[in[ 2] ^ K[ 2]]; out[ 3] = MSBOX2[in[ 3] ^ K[ 3]];
+   out[ 4] = MSBOX3[in[ 4] ^ K[ 4]]; out[ 5] = MSBOX4[in[ 5] ^ K[ 5]]; 
+   out[ 6] = MSBOX1[in[ 6] ^ K[ 6]]; out[ 7] = MSBOX2[in[ 7] ^ K[ 7]];
+   out[ 8] = MSBOX3[in[ 8] ^ K[ 8]]; out[ 9] = MSBOX4[in[ 9] ^ K[ 9]]; 
+   out[10] = MSBOX1[in[10] ^ K[10]]; out[11] = MSBOX2[in[11] ^ K[11]];
+   out[12] = MSBOX3[in[12] ^ K[12]]; out[13] = MSBOX4[in[13] ^ K[13]]; 
+   out[14] = MSBOX1[in[14] ^ K[14]]; out[15] = MSBOX2[in[15] ^ K[15]];
    difflayer(out);
 }
-// Encryption FINAL
+// Encryption FINAL in : 중간값, K1 K2 : 라운드키, out : 결과값
 void ENC_FINAL(u8* in, u8* K1, u8* K2, u8* out) {
-   out[ 0] = MSBOX3[in[ 0] ^ K1[ 0]] ^ K2[ 0]; out[ 1] = MSBOX4[in[ 1] ^ K1[ 1]] ^ K2[ 1];   out[ 2] = MSBOX1[in[ 2] ^ K1[ 2]] ^ K2[ 2]; out[ 3] = MSBOX2[in[ 3] ^ K1[ 3]] ^ K2[ 3];
-   out[ 4] = MSBOX3[in[ 4] ^ K1[ 4]] ^ K2[ 4]; out[ 5] = MSBOX4[in[ 5] ^ K1[ 5]] ^ K2[ 5];   out[ 6] = MSBOX1[in[ 6] ^ K1[ 6]] ^ K2[ 6]; out[ 7] = MSBOX2[in[ 7] ^ K1[ 7]] ^ K2[ 7];
-   out[ 8] = MSBOX3[in[ 8] ^ K1[ 8]] ^ K2[ 8]; out[ 9] = MSBOX4[in[ 9] ^ K1[ 9]] ^ K2[ 9];   out[10] = MSBOX1[in[10] ^ K1[10]] ^ K2[10]; out[11] = MSBOX2[in[11] ^ K1[11]] ^ K2[11];
-   out[12] = MSBOX3[in[12] ^ K1[12]] ^ K2[12]; out[13] = MSBOX4[in[13] ^ K1[13]] ^ K2[13];   out[14] = MSBOX1[in[14] ^ K1[14]]; out[15] = MSBOX2[in[15] ^ K1[15]] ^ K2[15];
+   out[ 0] = MSBOX3[in[ 0] ^ K1[ 0]] ^ K2[ 0]; out[ 1] = MSBOX4[in[ 1] ^ K1[ 1]] ^ K2[ 1]; 
+   out[ 2] = MSBOX1[in[ 2] ^ K1[ 2]] ^ K2[ 2]; out[ 3] = MSBOX2[in[ 3] ^ K1[ 3]] ^ K2[ 3];
+   out[ 4] = MSBOX3[in[ 4] ^ K1[ 4]] ^ K2[ 4]; out[ 5] = MSBOX4[in[ 5] ^ K1[ 5]] ^ K2[ 5]; 
+   out[ 6] = MSBOX1[in[ 6] ^ K1[ 6]] ^ K2[ 6]; out[ 7] = MSBOX2[in[ 7] ^ K1[ 7]] ^ K2[ 7];
+   out[ 8] = MSBOX3[in[ 8] ^ K1[ 8]] ^ K2[ 8]; out[ 9] = MSBOX4[in[ 9] ^ K1[ 9]] ^ K2[ 9]; 
+   out[10] = MSBOX1[in[10] ^ K1[10]] ^ K2[10]; out[11] = MSBOX2[in[11] ^ K1[11]] ^ K2[11];
+   out[12] = MSBOX3[in[12] ^ K1[12]] ^ K2[12]; out[13] = MSBOX4[in[13] ^ K1[13]] ^ K2[13]; 
+   out[14] = MSBOX1[in[14] ^ K1[14]]; out[15] = MSBOX2[in[15] ^ K1[15]] ^ K2[15];
 }
 // ENC_RoundKey Generation
 void ENC_RoundKey(u8 *W0, u8 *W1, u8 *W2, u8 *W3, u8 M3) {
@@ -437,15 +449,14 @@ void Key_Expansion(u8* MK, u8 M1, u8 M2, u8 M3) {
    u8    C2[16] = { 0x6d, 0xb1, 0x4a, 0xcc, 0x9e, 0x21, 0xc8, 0x20, 0xff, 0x28, 0xb1, 0xd5, 0xef, 0x5d, 0xe2, 0xb0 };
    u8    C3[16] = { 0xdb, 0x92, 0x37, 0x1d, 0x21, 0x26, 0xe9, 0x70, 0x03, 0x24, 0x97, 0x75, 0x04, 0xe8, 0xc9, 0x0e };
    u8    KL[16], KR[16], W0[16], W1[16], W2[16], W3[16];
-   u8    out[16], out2[16], out3[16];
+   u8    out[16];
    int i;
-   //KL
+   //KL RoundKey Left
    KL[ 0] = MK[ 0]; KL[ 1] = MK[ 1]; KL[ 2] = MK[ 2]; KL[ 3] = MK[ 3];
-
    KL[ 4] = MK[ 4]; KL[ 5] = MK[ 5]; KL[ 6] = MK[ 6]; KL[ 7] = MK[ 7];
    KL[ 8] = MK[ 8]; KL[ 9] = MK[ 9]; KL[10] = MK[10]; KL[11] = MK[11];
    KL[12] = MK[12]; KL[13] = MK[13]; KL[14] = MK[14]; KL[15] = MK[15];
-   //KR
+   //KR RoundKey Right
    KR[ 0] = MK[16]; KR[ 1] = MK[17]; KR[ 2] = MK[18]; KR[ 3] = MK[19];
    KR[ 4] = MK[20]; KR[ 5] = MK[21]; KR[ 6] = MK[22]; KR[ 7] = MK[23];
    KR[ 8] = MK[24]; KR[ 9] = MK[25]; KR[10] = MK[26]; KR[11] = MK[27];
@@ -475,48 +486,48 @@ void Key_Expansion(u8* MK, u8 M1, u8 M2, u8 M3) {
 
    ENC_EVEN(out, C2, W2);
 
-   W2[0] ^= (W0[0] ^ M2); W2[1] ^= (W0[1] ^ M2); W2[2] ^= (W0[2] ^ M1); W2[3] ^= (W0[3] ^ M1);
-   W2[4] ^= (W0[4] ^ M1); W2[5] ^= (W0[5] ^ M1); W2[6] ^= (W0[6] ^ M2); W2[7] ^= (W0[7] ^ M2);
-   W2[8] ^= (W0[8] ^ M2); W2[9] ^= (W0[9] ^ M2); W2[10] ^= (W0[10] ^ M1); W2[11] ^= (W0[11] ^ M1);
+   W2[ 0] ^= (W0[ 0] ^ M2); W2[ 1] ^= (W0[ 1] ^ M2); W2[ 2] ^= (W0[ 2] ^ M1); W2[ 3] ^= (W0[ 3] ^ M1);
+   W2[ 4] ^= (W0[ 4] ^ M1); W2[ 5] ^= (W0[ 5] ^ M1); W2[ 6] ^= (W0[ 6] ^ M2); W2[ 7] ^= (W0[ 7] ^ M2);
+   W2[ 8] ^= (W0[ 8] ^ M2); W2[ 9] ^= (W0[ 9] ^ M2); W2[10] ^= (W0[10] ^ M1); W2[11] ^= (W0[11] ^ M1);
    W2[12] ^= (W0[12] ^ M1); W2[13] ^= (W0[13] ^ M1); W2[14] ^= (W0[14] ^ M2); W2[15] ^= (W0[15] ^ M2);
    //W3
-   out[0] = W2[0] ^ M2; out[1] = W2[1] ^ M2; out[2] = W2[2] ^ M1; out[3] = W2[3] ^ M1;
-
-   out[4] = W2[4] ^ M2; out[5] = W2[5] ^ M2; out[6] = W2[6] ^ M1; out[7] = W2[7] ^ M1;
-   out[8] = W2[8] ^ M2; out[9] = W2[9] ^ M2; out[10] = W2[10] ^ M1; out[11] = W2[11] ^ M1;
-   out[12] = W2[12] ^ M2;   out[13] = W2[13] ^ M2;   out[14] = W2[14] ^ M1; out[15] = W2[15] ^ M1;
+   out[ 0] = W2[ 0] ^ M2; out[ 1] = W2[ 1] ^ M2; out[ 2] = W2[ 2] ^ M1; out[ 3] = W2[ 3] ^ M1;
+   out[ 4] = W2[ 4] ^ M2; out[ 5] = W2[ 5] ^ M2; out[ 6] = W2[ 6] ^ M1; out[ 7] = W2[ 7] ^ M1;
+   out[ 8] = W2[ 8] ^ M2; out[ 9] = W2[ 9] ^ M2; out[10] = W2[10] ^ M1; out[11] = W2[11] ^ M1;
+   out[12] = W2[12] ^ M2; out[13] = W2[13] ^ M2; out[14] = W2[14] ^ M1; out[15] = W2[15] ^ M1;
+   
    ENC_ODD(out, C3, W3);
-   W3[0] ^= (W1[0] ^ M1); W3[1] ^= (W1[1] ^ M1); W3[2] ^= (W1[2] ^ M2); W3[3] ^= (W1[3] ^ M2);
 
-   W3[4] ^= (W1[4] ^ M2); W3[5] ^= (W1[5] ^ M2); W3[6] ^= (W1[6] ^ M1); W3[7] ^= (W1[7] ^ M1);
-   W3[8] ^= (W1[8] ^ M1); W3[9] ^= (W1[9] ^ M1); W3[10] ^= (W1[10] ^ M2); W3[11] ^= (W1[11] ^ M2);
+   W3[ 0] ^= (W1[ 0] ^ M1); W3[ 1] ^= (W1[ 1] ^ M1); W3[ 2] ^= (W1[ 2] ^ M2); W3[ 3] ^= (W1[ 3] ^ M2);
+   W3[ 4] ^= (W1[ 4] ^ M2); W3[ 5] ^= (W1[ 5] ^ M2); W3[ 6] ^= (W1[ 6] ^ M1); W3[ 7] ^= (W1[ 7] ^ M1);
+   W3[ 8] ^= (W1[ 8] ^ M1); W3[ 9] ^= (W1[ 9] ^ M1); W3[10] ^= (W1[10] ^ M2); W3[11] ^= (W1[11] ^ M2);
    W3[12] ^= (W1[12] ^ M2); W3[13] ^= (W1[13] ^ M2); W3[14] ^= (W1[14] ^ M1); W3[15] ^= (W1[15] ^ M1);
    
    ENC_RoundKey(W0, W1, W2, W3, M3);
 }
-// 4, 6) 입출력 16바이트를 마스킹한다.
-void masking(u8 *in, u8 *out, u8 M1, u8 M2) { 
-   out[ 0] = in[ 0] ^ M2; out[ 1] = in[ 1] ^ M2; out[ 2] = in[ 2] ^ M1; out[ 3] = in[ 3] ^ M1; // m'm'mm
-   out[ 4] = in[ 4] ^ M2; out[ 5] = in[ 5] ^ M2; out[ 6] = in[ 6] ^ M1; out[ 7] = in[ 7] ^ M1; // m'm'mm
-   out[ 8] = in[ 8] ^ M2; out[ 9] = in[ 9] ^ M2; out[10] = in[10] ^ M1; out[11] = in[11] ^ M1; // m'm'mm
-   out[12] = in[12] ^ M2; out[13] = in[13] ^ M2; out[14] = in[14] ^ M1; out[15] = in[15] ^ M1; // m'm'mm
+// 4, 6) 입출력 16바이트를 마스킹한다. IN : plaintext, OUT : OUTPUT, M1 : m, M2 : m'
+void XOR16(u8 *in, u8 *out, u8 M1, u8 M2) { 
+   out[ 0] = in[ 0] ^ M2; out[ 1] = in[ 1] ^ M2; out[ 2] = in[ 2] ^ M1; out[ 3] = in[ 3] ^ M1;
+   out[ 4] = in[ 4] ^ M2; out[ 5] = in[ 5] ^ M2; out[ 6] = in[ 6] ^ M1; out[ 7] = in[ 7] ^ M1;
+   out[ 8] = in[ 8] ^ M2; out[ 9] = in[ 9] ^ M2; out[10] = in[10] ^ M1; out[11] = in[11] ^ M1;
+   out[12] = in[12] ^ M2; out[13] = in[13] ^ M2; out[14] = in[14] ^ M1; out[15] = in[15] ^ M1;
 }
-// 5) 각 라운드에서 확산 계층 연산 후 16바이트 중간 값중 8바이트를 XOR 연산한다.
+// 5) 각 라운드에서 확산 계층 연산 후 16바이트 중간 값중 8바이트를 XOR 연산한다. in : PT중간값, out : output, M3 : MASK
 void XOR8(u8* in, u8* out, u8 M3) { 
-   out[ 0] = in[ 0]; out[ 1] = in[ 1]; out[ 2] = in[ 2]; out[ 3] = in[ 3];                     // 0000
-   out[ 4] = in[ 4] ^ M3; out[ 5] = in[ 5] ^ M3; out[ 6] = in[ 6] ^ M3; out[ 7] = in[ 7] ^ M3; // m''m''m''m''
-   out[ 8] = in[ 8]; out[ 9] = in[ 9]; out[10] = in[10]; out[11] = in[11];                     // 0000
-   out[12] = in[12] ^ M3; out[13] = in[13] ^ M3; out[14] = in[14] ^ M3; out[15] = in[15] ^ M3; // m''m''m''m''
+   out[ 0] = in[ 0]; out[ 1] = in[ 1]; out[ 2] = in[ 2]; out[ 3] = in[ 3];                   
+   out[ 4] = in[ 4] ^ M3; out[ 5] = in[ 5] ^ M3; out[ 6] = in[ 6] ^ M3; out[ 7] = in[ 7] ^ M3; 
+   out[ 8] = in[ 8]; out[ 9] = in[ 9]; out[10] = in[10]; out[11] = in[11];                    
+   out[12] = in[12] ^ M3; out[13] = in[13] ^ M3; out[14] = in[14] ^ M3; out[15] = in[15] ^ M3;
 }
 // 암호화
 void Encryption(u8* PT, u8* CT, u8 M1, u8 M2, u8 M3) {
 
    u8 out[16];
-   masking(PT, out, M1, M2);
+   XOR16(PT, out, M1, M2);
 
    ENC_ODD(out, ek1, PT);
-   XOR8(PT, out, M3);   
-   
+   XOR8(PT, out, M3);
+
    ENC_EVEN(out, ek2, PT);
    XOR8(PT, out, M3);
 
@@ -548,7 +559,7 @@ void Encryption(u8* PT, u8* CT, u8 M1, u8 M2, u8 M3) {
    XOR8(PT, out, M3);
 
    ENC_FINAL(out, ek12, ek13, PT);
-   masking(PT, CT, M1, M2);
+   XOR16(PT, CT, M1, M2);
 }
 
 int main()
@@ -561,28 +572,34 @@ int main()
 
    //난수 생성
    srand(time(NULL) ^ RAND_MAX);
-   M1 = ((rand() << (rand() % 0xff)) ^ RAND_MAX) % 0xff;
+   M1 = ((rand() << (rand() & 0xff)) ^ RAND_MAX) & 0xff;
    srand(time(NULL) * rand() | 0xfa000000);
-   M2 = ((rand() << (rand() % 0xff)) ^ M1) % 0xff;
+   M2 = ((rand() << (rand() % 0xff)) ^ M1) & 0xff;
    M3 = M1 ^ M2;
 
    // 마스크 SBOX 생성
    for(int i = 0; i < 256; i++) 
    {
-      int m0 = i ^ M1;
-      int m1 = SBOX1[i] ^ M2;
-      int m2 = SBOX2[i] ^ M2;
+      int a = i ^ M1;
+      int b = SBOX1[i] ^ M2;
+      int c = SBOX2[i] ^ M2;
 
-      MSBOX1[m0] = m1;
-      MSBOX2[m0] = m2;
-      MSBOX3[m1] = m0;
-      MSBOX4[m2] = m0;
+      MSBOX1[a] = b;
+      MSBOX2[a] = c;
+      MSBOX3[b] = a;
+      MSBOX4[c] = a;
    }
+   puts("평문");
+   prt(PT);
 
    Key_Expansion(MK, M1, M2, M3);
    Encryption(PT, CT, M1, M2, M3);
+
+   puts("랜덤값으로 마스킹된 평문");
+   prt(PT);
+
+   puts("암호화");
    prt(CT);
-   puts("");
 
    return 0;
 }
