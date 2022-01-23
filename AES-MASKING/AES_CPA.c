@@ -7,8 +7,8 @@
 #define traceFN "traces.npy"
 #define ptFN "plaintext.npy"
 
-#define startpt 0
-#define endpt 20000
+#define startpt 2001
+#define endpt 24000
 
 typedef unsigned char u8;
 

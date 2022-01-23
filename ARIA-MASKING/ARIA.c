@@ -221,12 +221,12 @@ int DEC_KeySchedule(const u8 *MK, u8 *RK, int keysize)
 	return R;
 }
 
-void Crypto(const u8 *pt, int R, const u8 *RK, u8 *CT, u8 *M)
+void Crypto(const u8 *PT, int R, const u8 *RK, u8 *CT, u8 *M)
 {
 	u8      T[16];
 	int     i, j;
   
-	for(j = 0 ; j < 16 ; j++) CT[j] = pt[j];
+	for(j = 0 ; j < 16 ; j++) CT[j] = PT[j];
     
 	for(i = 0 ; i < R / 2 ; i++) // ENC_KeySchedule(MK, RK, 192) -> 14;
 	{
@@ -248,15 +248,17 @@ void ARIA()
 {
     u8      RK[272] = { 0x00, }; // RoundKey 16 * 17
     u8      MK[32] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };  // MasterKey
-    u8      pt[16] = { 0x11, 0x11, 0x11, 0x11, 0xaa, 0xaa, 0xaa, 0xaa, 0x11, 0x11,0x11, 0x11, 0xbb, 0xbb, 0xbb, 0xbb };
+    //u8      PT[16] = { 0x11, 0x11, 0x11, 0x11, 0xaa, 0xaa, 0xaa, 0xaa, 0x11, 0x11,0x11, 0x11, 0xbb, 0xbb, 0xbb, 0xbb };
     u8      CT[16] = { 0x00, };
     u8      M[10] = { 0x00, }; // Masking Layer
     int     i;
 
+    //u8 MK[32] = { 0x63, 0xCD, 0xF6, 0xC4, 0x8E, 0xA6, 0xAB, 0x28, 0x84, 0x19, 0x46, 0x87, 0x62, 0xF0, 0xAE, 0xE4 };
+    u8 PT[16] = { 0x0a, 0xa3, 0x15, 0x85, 0x43, 0x62, 0xde, 0x38, 0x32, 0xd3, 0x8d, 0x45, 0xbc, 0xf4, 0x2a, 0xbb };
     
-    Crypto(pt, ENC_KeySchedule(MK, RK, 128), RK, CT, M);
+    Crypto(PT, ENC_KeySchedule(MK, RK, 128), RK, CT, M);
     puts("평문");
-    prt(pt);
+    prt(PT);
     puts("암호화");
     prt(CT);
     
@@ -268,7 +270,7 @@ int main()
 }
 
 /*
-    Encryption Test Vector
+    EncryPTion Test Vector
     1 round : 71 f2 58 e5 33 a1 25 79 48 29 48 8f 65 5d 8f f6 
     2 round : d5 b0 6a 76 fb 8b 55 96 3f c4 4b 2f 03 f0 70 4d 
     3 round : 8d 40 db a4 e1 86 bb 7b bf d9 c1 57 04 4b 24 74 
