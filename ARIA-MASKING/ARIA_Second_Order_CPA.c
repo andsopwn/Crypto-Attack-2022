@@ -3,16 +3,15 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
-
 #define startpt 0
 #define endpt 24000
-
-#define TraceNum 10
+#define TraceNum 500
 #define TraceLength 24000
 
+#define Progress "-------------------------------------\nARIA Second Order CPA Progressing...\n-------------------------------------"
 typedef unsigned char u8;
 
 const u8    S[4][256] = {
@@ -95,7 +94,7 @@ const u8    S[4][256] = {
 };
 int main()
 {
-    puts("ARIA Second Order CPA Progressing...");
+    puts(Progress);
 	u8**		PT = NULL;
 	u8			iv, hw_iv; 
 	u8			MK[16];	 
@@ -104,10 +103,10 @@ int main()
 	double		*Sxx;
 	double		Syy;
 	double		*Sxy;
-	double		**data;  		// 파형 전체 저장
 	double	 	*corr;	
 	double		maxCorr; 
 	double		a, b, c;
+	float		**data;  		// 파형 전체 저장
 	int			key;
 	int			maxkey;
 	int			x, y;
@@ -121,12 +120,12 @@ int main()
 	if (rfp == NULL)
 		printf("%s 파일 읽기 오류", traceFN);
 	
-	data = (double**)calloc(TraceNum, sizeof(double*));
+	data = (float**)calloc(TraceNum, sizeof(float*));
 	for (i = 0 ; i < TraceNum; i++)
-		data[i] = (double*)calloc(TraceLength, sizeof(double));
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
 	for (i = 0; i < TraceNum; i++) {
-		fread(data[i], sizeof(double), TraceLength, rfp);
+		fread(data[i], sizeof(float), TraceLength, rfp);
 	}
 	fclose(rfp);
 
