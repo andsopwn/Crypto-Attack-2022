@@ -3,12 +3,15 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA/"
-#define traceFN "traces.npy"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
+#define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 
 #define startpt 0
-#define endpt 12000
+#define endpt 24000
+
+#define TraceNum 10
+#define TraceLength 24000
 
 typedef unsigned char u8;
 
@@ -92,42 +95,38 @@ const u8    S[4][256] = {
 };
 int main()
 {
-    printf("ARIA Second Order CPA Progressing...\n");
-	u8**	PT = NULL;
-	u8		iv, hw_iv; 
-	u8		MK[16];	 
-	double	maxCorr; 
-	double* corr;	
-	double	HW;	  
-	double	HW_2, *WT_2; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
-	double	*hw_wt;		// 해밍 x 전력의 합
-	double  *WT; // 실제 전력값들의 합, 전력값들 제곱의 합
-	double	a, b, c;
-	double** WT_data;  // 파동을 전체 저장할 데이터
-	int		TraceNum, TraceLength;
-	int		key, maxkey;
-	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
-	int		i, j, k;	  // 반복문에 쓰이는 변수
-	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
-	double	cur, all;
-	FILE	*rfp, * wfp;
+    puts("ARIA Second Order CPA Progressing...");
+	u8**		PT = NULL;
+	u8			iv, hw_iv; 
+	u8			MK[16];	 
+	double  	*Sx; 		// 전력
+	double		Sy;	  		// 해밍웨이트
+	double		*Sxx;
+	double		Syy;
+	double		*Sxy;
+	double		**data;  		// 파형 전체 저장
+	double	 	*corr;	
+	double		maxCorr; 
+	double		a, b, c;
+	int			key;
+	int			maxkey;
+	int			x, y;
+	int			i, j, k;
+	char		buf[256];
+	double		cur, all;
+	FILE		*rfp, * wfp;
 
 	sprintf(buf, "%s%s", DIR, traceFN);
 	rfp = fopen(buf, "rb");
 	if (rfp == NULL)
 		printf("%s 파일 읽기 오류", traceFN);
-
-	TraceLength = 24000;
-	TraceNum = 1000;
 	
-	// DATA 동적 할당
-	WT_data = (double**)calloc(TraceNum, sizeof(double*));
+	data = (double**)calloc(TraceNum, sizeof(double*));
 	for (i = 0 ; i < TraceNum; i++)
-		WT_data[i] = (double*)calloc(TraceLength, sizeof(double));
+		data[i] = (double*)calloc(TraceLength, sizeof(double));
 	
-	// DATA 
 	for (i = 0; i < TraceNum; i++) {
-		fread(WT_data[i], sizeof(double), TraceLength, rfp);
+		fread(data[i], sizeof(double), TraceLength, rfp);
 	}
 	fclose(rfp);
 
@@ -146,15 +145,15 @@ int main()
 
 
 	corr = (double*)calloc(TraceLength, sizeof(double));
-	WT = (double*)calloc(TraceLength, sizeof(double));
-	WT_2 = (double*)calloc(TraceLength, sizeof(double));
-	hw_wt = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
 
 	for (i = 0; i < TraceNum; i++)
 	{
 		for (j = startpt; j < endpt; j++) {
-			WT[j] += WT_data[i][j];
-			WT_2[j] += WT_data[i][j] * WT_data[i][j];
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
 		}
 	}
 
@@ -163,27 +162,27 @@ int main()
 		maxCorr = 0;
 		maxkey = 0;
 		for (key = 0 ; key < 256; key++) {
-			HW = 0;
-			HW_2 = 0;
-			memset(hw_wt, 0, sizeof(double)*TraceLength);
+			Sy = 0;
+			Syy = 0;
+			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
                 iv = S[i % 4][PT[j][i] ^ key];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
-				HW += hw_iv;
-				HW_2 += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
 				
 				for (k = startpt; k < endpt; k++) {
-					hw_wt[k] += hw_iv * WT_data[j][k];
+					Sxy[k] += hw_iv * data[j][k];
 				} 
 			}
 
 			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
 
-				a = (double)TraceNum * hw_wt[j] - WT[j] * HW;
-				b = sqrt((double)TraceNum * WT_2[j] - WT[j] * WT[j]);
-				c = sqrt((double)TraceNum * HW_2 - HW * HW);
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
 
 				//printf("%lf %lf %lf\n", a, b, c);
 
@@ -193,6 +192,9 @@ int main()
 					maxCorr = fabs(corr[j]);
 				}
 			}
+			if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
+			else
 			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
 
 			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
@@ -203,17 +205,15 @@ int main()
 			fwrite(corr, sizeof(double), TraceLength, wfp);
 			fclose(wfp);
 		}
-		printf("    %lf %02X %02X %02X %02X %02X\n", maxCorr, maxkey, S[0][maxkey], S[1][maxkey], S[2][maxkey], S[3][maxkey]);
+		
 		MK[i] = maxkey;
 	}
-	printf("\n\n");
-
 	puts("");
 
 	free(PT);
-	free(hw_wt);
-	free(WT);
-	free(WT_2);
-	free(WT_data);
+	free(Sxy);
+	free(Sx);
+	free(Sxx);
+	free(data);
 	free(corr);
 }

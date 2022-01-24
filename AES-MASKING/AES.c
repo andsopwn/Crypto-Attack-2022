@@ -19,18 +19,6 @@ typedef unsigned int u32;
     | ((u32)Sbox[(u8)((x >> 8) & 0xFF)] << 8) \
     | ((u32)Sbox[(u8)(x & 0xff)]) \
 
-void prt(u8 CT[16])
-{   
-    printf("\n");
-    for(int i = 0 ; i < 4 ; i++)
-    {
-    for(int k = 0 ; k < 4 ; k++)
-    printf("%02X ", CT[k * 4 + i]);
-    printf("\n"); 
-    }
-    printf("\n");
-}
-
 u8 Sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -240,14 +228,6 @@ void AES_DEC(u8 PT[16], u8 RK[16], u8 CT[16], int keysize)
     AddRoundKey(CT, RK + 0);
 }
 
-void pprt(u8 A[])
-{
-    printf("AFTER Text : ");
-    for(int i = 0 ; i < 16 ; i++)
-    printf("%02X", A[i]);
-    printf("\n");
-}
-
 int main()
 {
     int i;
@@ -263,5 +243,4 @@ int main()
     AES_KeySchedule(MK, RK, keysize);
     AES_ENC(PT, RK, CT, keysize);
 
-    prt(CT);
 }   
