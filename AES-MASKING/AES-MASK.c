@@ -56,6 +56,127 @@ void prt(u8 *S)
     puts("");
 }
 
+void Mask_RK_Update(unsigned char* out, unsigned char* in, int i)
+{
+   unsigned char tmp[4];
+
+   tmp[0] = in[13] ^ M[7];
+   tmp[1] = in[14] ^ M[8];
+   tmp[2] = in[15] ^ M[9];
+   tmp[3] = in[12] ^ M[6];
+
+   tmp[0] = MSbox[tmp[0]] ^ Rcon[i];
+   tmp[1] = MSbox[tmp[1]];
+   tmp[2] = MSbox[tmp[2]];
+   tmp[3] = MSbox[tmp[3]];
+
+   // 첫번째 블록 
+   out[0] = in[0] ^ tmp[0] ^ M[1];
+   out[1] = in[1] ^ tmp[1] ^ M[1];
+   out[2] = in[2] ^ tmp[2] ^ M[1];
+   out[3] = in[3] ^ tmp[3] ^ M[1];
+   // 두번째 블록
+   out[4] = in[4] ^ M[0] ^ out[0] ^ M[6];
+   out[5] = in[5] ^ M[0] ^ out[1] ^ M[7];
+   out[6] = in[6] ^ M[0] ^ out[2] ^ M[8];
+   out[7] = in[7] ^ M[0] ^ out[3] ^ M[9];
+   // 세번째 블록
+   out[8] = in[8] ^ M[0] ^ out[4] ^ M[6];
+   out[9] = in[9] ^ M[0] ^ out[5] ^ M[7];
+   out[10] = in[10] ^ M[0] ^ out[6] ^ M[8];
+   out[11] = in[11] ^ M[0] ^ out[7] ^ M[9];
+   // 네번째 블록
+   out[12] = in[12] ^ M[6] ^ out[8] ^ M[0];
+   out[13] = in[13] ^ M[7] ^ out[9] ^ M[0];
+   out[14] = in[14] ^ M[8] ^ out[10] ^ M[0];
+   out[15] = in[15] ^ M[9] ^ out[11] ^ M[0];
+}
+void RK_Update(unsigned char* out, unsigned char* in, int i)
+{
+   unsigned char tmp[4];
+
+   unsigned Rcon[10] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
+
+
+   tmp[0] = in[13]; tmp[1] = in[14]; tmp[2] = in[15]; tmp[3] = in[12];
+
+   tmp[0] = Sbox[tmp[0]] ^ Rcon[i];
+   tmp[1] = Sbox[tmp[1]];
+   tmp[2] = Sbox[tmp[2]];
+   tmp[3] = Sbox[tmp[3]];
+
+   out[0] = in[0] ^ tmp[0]; out[1] = in[1] ^ tmp[1]; out[2] = in[2] ^ tmp[2]; out[3] = in[3] ^ tmp[3];
+   out[4] = in[4] ^ out[0]; out[5] = in[5] ^ out[1]; out[6] = in[6] ^ out[2]; out[7] = in[7] ^ out[3];
+   out[8] = in[8] ^ out[4]; out[9] = in[9] ^ out[5]; out[10] = in[10] ^ out[6]; out[11] = in[11] ^ out[7];
+   out[12] = in[12] ^ out[8]; out[13] = in[13] ^ out[9]; out[14] = in[14] ^ out[10]; out[15] = in[15] ^ out[11];
+}
+
+void Mask_RK_Update2(unsigned char* out, unsigned char* in)
+{
+   unsigned char tmp[4];
+
+   tmp[0] = in[13] ^ M[7];
+   tmp[1] = in[14] ^ M[8];
+   tmp[2] = in[15] ^ M[9];
+   tmp[3] = in[12] ^ M[6];
+
+   tmp[0] = MSbox[tmp[0]] ^ Rcon[9];
+   tmp[1] = MSbox[tmp[1]];
+   tmp[2] = MSbox[tmp[2]];
+   tmp[3] = MSbox[tmp[3]];
+
+   // 첫번째 블록
+   out[0] = in[0] ^ tmp[0];
+   out[1] = in[1] ^ tmp[1];
+   out[2] = in[2] ^ tmp[2];
+   out[3] = in[3] ^ tmp[3];
+   // 두번째 블록
+   out[4] = in[4] ^ out[0];
+   out[5] = in[5] ^ out[1];
+   out[6] = in[6] ^ out[2];
+   out[7] = in[7] ^ out[3];
+   // 세번째 블록
+   out[8] = in[8] ^ M[6] ^ out[4];
+   out[9] = in[9] ^ M[7] ^ out[5];
+   out[10] = in[10] ^ M[8] ^ out[6];
+   out[11] = in[11] ^ M[9] ^ out[7];
+   // 네번째 블록
+   out[12] = in[12] ^ M[6] ^ out[8];
+   out[13] = in[13] ^ M[7] ^ out[9];
+   out[14] = in[14] ^ M[8] ^ out[10];
+   out[15] = in[15] ^ M[9] ^ out[11];
+
+   // 마스크 옳바르게 바꾸기 
+   out[0] = out[0] ^ M[6] ^ M[0];
+   out[1] = out[1] ^ M[7] ^ M[0];
+   out[2] = out[2] ^ M[8] ^ M[0];
+   out[3] = out[3] ^ M[9] ^ M[0];
+
+   out[8] = out[8] ^ M[0];
+   out[9] = out[9] ^ M[0];
+   out[10] = out[10] ^ M[0];
+   out[11] = out[11] ^ M[0];
+}
+
+
+void Mask_KeyExpansion(unsigned char* MK, unsigned char* RK)
+{
+   int i;
+
+   for (i = 0; i < 16; i += 4)
+   {
+      RK[i] = MK[i] ^ M[6] ^ M[0];
+      RK[i + 1] = MK[i + 1] ^ M[7] ^ M[0];
+      RK[i + 2] = MK[i + 2] ^ M[8] ^ M[0];
+      RK[i + 3] = MK[i + 3] ^ M[9] ^ M[0];
+   }
+
+   for (i = 0; i < 9; i++)
+   {
+      Mask_RK_Update(RK + 16, RK, i);
+      RK += 16;
+   }
+}
 void AddRoundKey(u8 *S, u8 *RK)
 {
     S[0] ^= RK[0]; S[1] ^= RK[1]; S[2] ^= RK[2]; S[3] ^= RK[3];

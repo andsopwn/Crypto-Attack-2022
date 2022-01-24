@@ -568,13 +568,12 @@ int main()
    u8 CT[16] = { 0x00 };
    u8 MK[32] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
    u8 M1, M2, M3; // 마스크 레이어
-   int i;
+   int i, x, y;
 
    //난수 생성
-   srand(time(NULL) ^ RAND_MAX);
-   M1 = ((rand() << (rand() & 0xff)) ^ RAND_MAX) & 0xff;
-   srand(time(NULL) * rand() | 0xfa000000);
-   M2 = ((rand() << (rand() % 0xff)) ^ M1) & 0xff;
+   M1 = rand() + 100;
+   M2 = rand() + 150;
+   x = M1 / 16; y = M2 % 16;
    M3 = M1 ^ M2;
 
    // 마스크 SBOX 생성

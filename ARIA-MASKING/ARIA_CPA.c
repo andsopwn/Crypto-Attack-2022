@@ -8,7 +8,7 @@
 #define ptFN "plaintext.npy"
 
 #define startpt 0
-#define endpt 24000
+#define endpt 12000
 
 typedef unsigned char u8;
 
@@ -90,9 +90,9 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-
 int main()
 {
+    printf("ARIA CPA Progressing...\n");
 	u8**	PT = NULL;
 	u8		iv, hw_iv; 
 	u8		MK[16];	 
@@ -167,7 +167,7 @@ int main()
 			HW_2 = 0;
 			memset(hw_wt, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-				iv = S[i % 4][PT[j][i]^key]; 
+                iv = S[i % 4][PT[j][i] ^ key];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			

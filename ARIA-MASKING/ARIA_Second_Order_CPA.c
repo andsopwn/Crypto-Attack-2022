@@ -90,9 +90,9 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-u8  MS[4][256];
 int main()
 {
+    printf("ARIA Second Order CPA Progressing...\n");
 	u8**	PT = NULL;
 	u8		iv, hw_iv; 
 	u8		MK[16];	 
@@ -158,21 +158,6 @@ int main()
 		}
 	}
 
-    u8 m0 = 100;
-    u8 m1 = 100;
-    u8 m2 = m0 ^ m1;
-
-    for(int i = 0; i < 256; i++) 
-   {
-      int a = i ^ m1;
-      int b = S[0][i] ^ m2;
-      int c = S[1][i] ^ m2;
-
-      MS[0][a] = b;
-      MS[1][a] = c;
-      MS[2][b] = a;
-      MS[3][c] = a;
-   }
 	for (int i = 0; i < 16 ; i++)
 	{
 		maxCorr = 0;
@@ -182,10 +167,7 @@ int main()
 			HW_2 = 0;
 			memset(hw_wt, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-                if(i % 4 == 0 && i % 4 == 1)
-				iv = MS[i % 4][PT[j][i] ^ key]; 
-                else
-                iv = MS[i % 4][PT[j][i] ^ key];                
+                iv = S[i % 4][PT[j][i] ^ key];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
