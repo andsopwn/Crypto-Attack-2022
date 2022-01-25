@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
+#define lenswitch 0
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
-#define traceFN "masked.bin"
+#define traceFN "non.bin"
 #define ptFN "plaintext.npy"
 #define startpt 0
 #define endpt 24000
@@ -96,8 +96,9 @@ const u8    S[4][256] = {
 int main()
 {
     puts(Progress);
-	float		**data = NULL;	// 파형 전체 저장
-	u8			**PT = NULL;
+
+	float		**data		= NULL;
+	u8			**PT 		= NULL;
 	u8			iv, hw_iv; 
 	u8			MK[16];	 
 	double  	*Sx; 			// 전력
@@ -116,45 +117,52 @@ int main()
 	double		cur, all;
 	FILE		*rfp, * wfp;
 
+//==============================================================//
+//					Measured Power Allocation					//
+//==============================================================//
 	sprintf(buf, "%s%s", DIR, traceFN);
-	rfp = fopen(buf, "rb");
-	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", traceFN);
-	
+	rfp = fopen(buf, "rb"); 
+	if (rfp == NULL) printf("%s 파일 읽기 오류", traceFN);
+
 	data = (float**)calloc(TraceNum, sizeof(float*));
-	for (i = 0 ; i < TraceNum; i++)
+	for (i = 0 ; i < TraceNum; i++)	
 		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
-	for (i = 0; i < TraceNum; i++) {
+	for (i = 0; i < TraceNum; i++)
 		fread(data[i], sizeof(float), TraceLength, rfp);
-	}
+	
 	fclose(rfp);
-
+//==============================================================//
+//					   Plaintext Allocation				    	//
+//==============================================================//
 	sprintf(buf, "%s%s", DIR, ptFN);
 	rfp = fopen(buf, "rb");
-	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", ptFN);
+	if (rfp == NULL) printf("%s 파일 읽기 오류", ptFN);
 
 	PT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
 		PT[i] = (u8*)calloc(16, sizeof(u8));
 	
-	for (i = 0; i < TraceNum; i++) {
+	for (i = 0; i < TraceNum; i++)
 		fread(PT[i], sizeof(char), 16, rfp);
-	}
 //==============================================================//
+//						Interim Check							//
 //						T1 | M PART								//
 //						T2 | Key Expansion						//
 //						T3 | 1 ROUND SBOX PART					//
 //					   cut | Mixed data							//
 //==============================================================//
-	int 	t1_start 	= 0;
-	int		t1_end		= 20;
-	int		t2_start	= 11000;
-	int		t2_end		= 13000;
+	int 	S1_makeM 	= 0;
+	int		E1_makeM	= 20;
+	int		t2_start	= 7420;
+	int		t2_end		= 8660;
 	int		t3_start 	= 16000;
 	int		t3_end		= 17800;
-	int 	len 		= (t1_end - t1_start) * (t2_end - t2_start);
+	#if lenswitch == 0
+	int 	len 		= (E1_makeM - S1_makeM) * (t2_end - t2_start);
+	#else
+	int		len 		= (t2_end - t2_start) * (t3_end - t3_start);
+	#endif
 	int		m			= 0;
 	float	**cut		= NULL;
 	float	*plus		= NULL;
@@ -165,12 +173,15 @@ int main()
 	cut = (float**)calloc(TraceNum, sizeof(float*));
 	for(i = 0 ; i < TraceNum ; i++)
 		cut[i] = (float*)calloc(len, sizeof(float));
-	plus = (float*)calloc(TraceLength, sizeof(float));
-	mean = (float*)calloc(TraceLength, sizeof(float));
+
+	plus = (float*) calloc(TraceLength, sizeof(float));
+	mean = (float*) calloc(TraceLength, sizeof(float));
 	corr = (double*)calloc(len, sizeof(double));
 	Sx   = (double*)calloc(len, sizeof(double));
 	Sxx  = (double*)calloc(len, sizeof(double));
 	Sxy  = (double*)calloc(len, sizeof(double));
+//==============================================================//
+//					LET ME MAKE NEW TRACES						//
 //==============================================================//
 	for(i = 0 ; i < TraceNum ; i++)	{
 		for(j = 0 ; j < TraceLength ; j++)
@@ -181,7 +192,7 @@ int main()
 	for(i = 0 ; i < TraceNum ; i++)
 	{
 		m = 0;
-		for(j = t1_start ; j < t1_end ; j++) {
+		for(j = S1_makeM ; j < E1_makeM ; j++) {
 			for(k = t2_start ; k < t2_end ; k++)
 			cut[i][m + (k - t2_start)] = (data[i][k] - mean[k]) * (data[i][j] - mean[j]);
 		}
@@ -190,61 +201,59 @@ int main()
 //==============================================================//
 //						New data CPA							//
 //==============================================================//
+	printf("[CPA INFO] NEW TraceLength : %d     TraceNum : %d\n", len, TraceNum);
 
 	for (i = 0; i < len; i++) {
-		for (j = 0; j < TraceNum; j++) {
-			Sx[i] += cut[j][i];
-			Sxx[i] += cut[j][i] * cut[j][i];
-		}
-	}
-
-	for(int i = 0 ; i < 16 ; i++)
+        for (j = 0; j < TraceNum; j++) {
+            Sx[i] += cut[j][i];
+            Sxx[i] += cut[j][i] * cut[j][i];
+        }
+    }
+	for(i = 0 ; i < 16 ; i++)
 	{
 		maxCorr = 0;
 		maxkey = 0;
-
-		for(key = 0 ; key < 256 ; key++)
-		{
+		memset(Sxy, 0, sizeof(double) * len);
+		for (key = 0; key < 256; key++) {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double) * len);
-			for(j = 0 ; j < TraceNum ; j++)
-			{
+			for (j = 0; j < TraceNum; j++) {
 				iv = S[0][PT[j][0] ^ key];
 				hw_iv = 0;
-				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+
+				for (k = 0; k < 8; k++) {
+					hw_iv += ((iv >> k) & 1);
+				}
 
 				Sy += hw_iv;
 				Syy += hw_iv * hw_iv;
 
-				for(k = 0 ; k < len ; k++)
+				for (k = 0 /*0*/; k < len /*TraceLength*/; k++) {
 					Sxy[k] += hw_iv * cut[j][k];
-			}
-
-			for(k = 0 ; k < len ; k++) {
-				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
-				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
-				c = sqrt((double)TraceNum * Syy - Sy * Sy);
-				corr[j] = a / (b * c);
-
-				if (fabs(corr[j]) > maxCorr) {
-					maxkey = key;
-					maxCorr = fabs(corr[j]);
 				}
 			}
-			sprintf(buf, "%sct/block_%02X.corrtrace", DIR, key);
+			for (k = 0; k < len; k++) {
+				corr[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
+
+				if (fabs(corr[k]) > maxCorr) {
+					maxkey = key;
+					maxCorr = fabs(corr[k]);
+				}
+			}
+			if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
+			else
+			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% CR[%lf] K[%02X]", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100, maxCorr, maxkey);
+
+			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
+			fflush(stdout);
 			wfp = fopen(buf, "wb");
 			if (wfp == NULL)
 				printf("블록 쓰기 에러\n");
 			fwrite(corr, sizeof(double), TraceLength, wfp);
 			fclose(wfp);
-			if(key == 255)
-			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
-			else
-			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
-			fflush(stdout);
 		}
-
 		MK[i] = maxkey;
 	}
 		
@@ -254,11 +263,9 @@ int main()
 	free(Sx);
 	free(Sxx);
 	free(corr);
-
-	for(i = 0 ; i < TraceNum ; ++i)	free(PT[i]);
-	free(PT);
-
-	for(i = 0 ; i < TraceLength ; ++i)	free(data[i]);
-	free(data);
-	
+	free(plus);
+	free(mean);
+	for(i = 0 ; i < TraceNum ; ++i)		free(PT[i]);	free(PT);
+	for(i = 0 ; i < TraceLength ; ++i)	free(data[i]);	free(data);
+	free(cut);		
 }
