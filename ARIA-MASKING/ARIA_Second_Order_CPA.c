@@ -198,43 +198,56 @@ int main()
 		}
 	}
 
-	Sy = 0;
-	Syy = 0;
-	memset(Sxy, 0, sizeof(double) * len);
-	for(j = 0 ; j < TraceNum ; j++)
+	for(int i = 0 ; i < 16 ; i++)
 	{
-		iv = S[0][PT[j][0] ^ key];
-		hw_iv = 0;
-		for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+		maxCorr = 0;
+		maxkey = 0;
 
-		Sy += hw_iv;
-		Syy += hw_iv * hw_iv;
+		for(key = 0 ; key < 256 ; key++)
+		{
+			Sy = 0;
+			Syy = 0;
+			memset(Sxy, 0, sizeof(double) * len);
+			for(j = 0 ; j < TraceNum ; j++)
+			{
+				iv = S[0][PT[j][0] ^ key];
+				hw_iv = 0;
+				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 
-		for(k = 0 ; k < len ; k++)
-			Sxy[k] += hw_iv * cut[j][k];
-	}
-	for(k = 0 ; k < len ; k++)
-	{
-		a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
-		b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
-		c = sqrt((double)TraceNum * Syy - Sy * Sy);
-		corr[j] = a / (b * c);
-		if (fabs(corr[j]) > maxCorr) {
-			maxkey = key;
-			maxCorr = fabs(corr[j]);
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv;
+
+				for(k = 0 ; k < len ; k++)
+					Sxy[k] += hw_iv * cut[j][k];
+			}
+
+			for(k = 0 ; k < len ; k++) {
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
+				corr[j] = a / (b * c);
+
+				if (fabs(corr[j]) > maxCorr) {
+					maxkey = key;
+					maxCorr = fabs(corr[j]);
+				}
+			}
+			sprintf(buf, "%sct/block_%02X.corrtrace", DIR, key);
+			wfp = fopen(buf, "wb");
+			if (wfp == NULL)
+				printf("블록 쓰기 에러\n");
+			fwrite(corr, sizeof(double), TraceLength, wfp);
+			fclose(wfp);
+			if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
+			else
+			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
+			fflush(stdout);
 		}
-		if(key == 255)
-		printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
-		else
-		printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
-		sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
-		fflush(stdout);
-		wfp = fopen(buf, "wb");
-		if (wfp == NULL)
-			printf("블록 쓰기 에러\n");
-		fwrite(corr, sizeof(double), TraceLength, wfp);
-		fclose(wfp);
+
+		MK[i] = maxkey;
 	}
+		
 	puts("");
 
 	free(Sxy);
