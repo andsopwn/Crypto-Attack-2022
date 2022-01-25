@@ -3,12 +3,13 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA/"
-#define traceFN "trace.bin"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
+#define traceFN "masked.bin"
 #define ptFN "plaintext.npy"
 #define startpt 0
 #define endpt 24000
-#define TraceNum 500
+
+#define TraceNum 5000
 #define TraceLength 24000
 
 #define Progress "-------------------------------------\nARIA Second Order CPA Progressing...\n-------------------------------------"
@@ -95,18 +96,18 @@ const u8    S[4][256] = {
 int main()
 {
     puts(Progress);
-	u8**		PT = NULL;
+	float		**data = NULL;	// 파형 전체 저장
+	u8			**PT = NULL;
 	u8			iv, hw_iv; 
 	u8			MK[16];	 
-	double  	*Sx; 		// 전력
-	double		Sy;	  		// 해밍웨이트
+	double  	*Sx; 			// 전력
+	double		Sy;	  			// 해밍웨이트
 	double		*Sxx;
 	double		Syy;
 	double		*Sxy;
 	double	 	*corr;	
 	double		maxCorr; 
 	double		a, b, c;
-	float		**data;  		// 파형 전체 저장
 	int			key;
 	int			maxkey;
 	int			x, y;
@@ -141,78 +142,110 @@ int main()
 	for (i = 0; i < TraceNum; i++) {
 		fread(PT[i], sizeof(char), 16, rfp);
 	}
-
-
-	corr = (double*)calloc(TraceLength, sizeof(double));
-	Sx = (double*)calloc(TraceLength, sizeof(double));
-	Sxx = (double*)calloc(TraceLength, sizeof(double));
-	Sxy = (double*)calloc(TraceLength, sizeof(double));
-
-	for (i = 0; i < TraceNum; i++)
+//==============================================================//
+//						T1 | M PART								//
+//						T2 | Key Expansion						//
+//						T3 | 1 ROUND SBOX PART					//
+//					   cut | Mixed data							//
+//==============================================================//
+	int 	t1_start 	= 0;
+	int		t1_end		= 20;
+	int		t2_start	= 11000;
+	int		t2_end		= 13000;
+	int		t3_start 	= 16000;
+	int		t3_end		= 17800;
+	int 	len 		= (t1_end - t1_start) * (t2_end - t2_start);
+	int		m			= 0;
+	float	**cut		= NULL;
+	float	*plus		= NULL;
+	float	*mean 		= NULL;
+//==============================================================//
+//					New data dynamic allocation					//
+//==============================================================//
+	cut = (float**)calloc(TraceNum, sizeof(float*));
+	for(i = 0 ; i < TraceNum ; i++)
+		cut[i] = (float*)calloc(len, sizeof(float));
+	plus = (float*)calloc(TraceLength, sizeof(float));
+	mean = (float*)calloc(TraceLength, sizeof(float));
+	corr = (double*)calloc(len, sizeof(double));
+	Sx   = (double*)calloc(len, sizeof(double));
+	Sxx  = (double*)calloc(len, sizeof(double));
+	Sxy  = (double*)calloc(len, sizeof(double));
+//==============================================================//
+	for(i = 0 ; i < TraceNum ; i++)	{
+		for(j = 0 ; j < TraceLength ; j++)
+		plus[j] += data[i][j];
+	}
+	for(i = 0 ; i < TraceLength ; i++)
+		mean[i] = (float)(plus[i] / TraceNum);
+	for(i = 0 ; i < TraceNum ; i++)
 	{
-		for (j = startpt; j < endpt; j++) {
-			Sx[j] += data[i][j];
-			Sxx[j] += data[i][j] * data[i][j];
+		m = 0;
+		for(j = t1_start ; j < t1_end ; j++) {
+			for(k = t2_start ; k < t2_end ; k++)
+			cut[i][m + (k - t2_start)] = (data[i][k] - mean[k]) * (data[i][j] - mean[j]);
+		}
+		m += t2_end - t2_start;
+	}
+//==============================================================//
+//						New data CPA							//
+//==============================================================//
+
+	for (i = 0; i < len; i++) {
+		for (j = 0; j < TraceNum; j++) {
+			Sx[i] += cut[j][i];
+			Sxx[i] += cut[j][i] * cut[j][i];
 		}
 	}
 
-	for (int i = 0; i < 16 ; i++)
+	Sy = 0;
+	Syy = 0;
+	memset(Sxy, 0, sizeof(double) * len);
+	for(j = 0 ; j < TraceNum ; j++)
 	{
-		maxCorr = 0;
-		maxkey = 0;
-		for (key = 0 ; key < 256; key++) {
-			Sy = 0;
-			Syy = 0;
-			memset(Sxy, 0, sizeof(double)*TraceLength);
-			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-                iv = S[i % 4][PT[j][i] ^ key];
-				hw_iv = 0;
-				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
-			
-				Sy += hw_iv;
-				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
-				
-				for (k = startpt; k < endpt; k++) {
-					Sxy[k] += hw_iv * data[j][k];
-				} 
-			}
+		iv = S[0][PT[j][0] ^ key];
+		hw_iv = 0;
+		for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 
-			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+		Sy += hw_iv;
+		Syy += hw_iv * hw_iv;
 
-				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
-				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
-				c = sqrt((double)TraceNum * Syy - Sy * Sy);
-
-				//printf("%lf %lf %lf\n", a, b, c);
-
-				corr[j] = a / (b * c);
-				if (fabs(corr[j]) > maxCorr) {
-					maxkey = key;
-					maxCorr = fabs(corr[j]);
-				}
-			}
-			if(key == 255)
-			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
-			else
-			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
-
-			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
-			fflush(stdout);
-			wfp = fopen(buf, "wb");
-			if (wfp == NULL)
-				printf("블록 쓰기 에러\n");
-			fwrite(corr, sizeof(double), TraceLength, wfp);
-			fclose(wfp);
+		for(k = 0 ; k < len ; k++)
+			Sxy[k] += hw_iv * cut[j][k];
+	}
+	for(k = 0 ; k < len ; k++)
+	{
+		a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+		b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+		c = sqrt((double)TraceNum * Syy - Sy * Sy);
+		corr[j] = a / (b * c);
+		if (fabs(corr[j]) > maxCorr) {
+			maxkey = key;
+			maxCorr = fabs(corr[j]);
 		}
-		
-		MK[i] = maxkey;
+		if(key == 255)
+		printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
+		else
+		printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
+		sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
+		fflush(stdout);
+		wfp = fopen(buf, "wb");
+		if (wfp == NULL)
+			printf("블록 쓰기 에러\n");
+		fwrite(corr, sizeof(double), TraceLength, wfp);
+		fclose(wfp);
 	}
 	puts("");
 
-	free(PT);
 	free(Sxy);
 	free(Sx);
 	free(Sxx);
-	free(data);
 	free(corr);
+
+	for(i = 0 ; i < TraceNum ; ++i)	free(PT[i]);
+	free(PT);
+
+	for(i = 0 ; i < TraceLength ; ++i)	free(data[i]);
+	free(data);
+	
 }
