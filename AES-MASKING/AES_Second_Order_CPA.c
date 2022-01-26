@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
-#define traceFN "trace.bin"
+#define traceFN "masked.bin"
 #define ptFN "plaintext.npy"
 #define SW 0
 #define TraceNum 2000
@@ -92,7 +92,7 @@ void CPA(int TEVEC0, int TEVEC1)
 	int		E2_KeyMask	= TEVEC0 + 200;	// 이거 내일 단계단계 올려서 corr 값만 확인하자
 	int		S3_RMASK 	= TEVEC1;
 	int		E3_RMASK	= TEVEC1 + 200;
-	#if SW == 1
+	#if 	SW == 1
 	int 	len 		= (E1_makeM - S1_makeM) * (E2_KeyMask - S2_KeyMask);
 	#else
 	int		len 		= (E2_KeyMask - S2_KeyMask) * (E3_RMASK - S3_RMASK);
@@ -199,15 +199,15 @@ void CPA(int TEVEC0, int TEVEC1)
 }
 
 //==============================================================//	
-//							FIND MACRO							//
+//							FIND MACRO							//	AES SBOX 7890 ~ 9450
 //==============================================================//
 int main()
 {
 	puts(Progress);
 
-	for(int i = 13200 ; i < 14400 ; i += 200)
+	for(int i = 4900 ; i < 5300 ; i += 200)
 	{
-		for(int k = 20000 ; k < 21000 ; k += 200)
+		for(int k = 7900 ; k < 9450 ; k += 200)
 		CPA(i, k); 
 	}
 }

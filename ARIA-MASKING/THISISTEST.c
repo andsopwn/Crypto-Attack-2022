@@ -1,15 +1,18 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
+
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_TEST/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
-#define SW 0
+#define startpt 0
+#define endpt 12000
 #define TraceNum 2000
 #define TraceLength 24000
 
-#define Progress "-------------------------------------\nARIA Second Order CPA Progressing...\n-------------------------------------"
+#define Progress "ARIA CPA GOING TO TEST VEC."
+
 typedef unsigned char u8;
 
 const u8    S[4][256] = {
@@ -90,20 +93,21 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-void CPA()
+int main()
 {
-	float		**data		= NULL;
-	u8			**PT 		= NULL;
+    puts(Progress);
+	u8**		PT = NULL;
 	u8			iv, hw_iv; 
 	u8			MK[16];	 
-	double  	*Sx; 			// 전력
-	double		Sy;	  			// 해밍웨이트
+	double  	*Sx; 		// 전력
+	double		Sy;	  		// 해밍웨이트
 	double		*Sxx;
 	double		Syy;
 	double		*Sxy;
 	double	 	*corr;	
 	double		maxCorr; 
 	double		a, b, c;
+	float		**data;  		// 파형 전체 저장
 	int			key;
 	int			maxkey;
 	int			x, y;
@@ -112,126 +116,86 @@ void CPA()
 	double		cur, all;
 	FILE		*rfp, * wfp;
 
-//==============================================================//
-//					Measured Power Allocation					//
-//==============================================================//
 	sprintf(buf, "%s%s", DIR, traceFN);
-	rfp = fopen(buf, "rb"); 
-	if (rfp == NULL) printf("%s 파일 읽기 오류", traceFN);
-
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
 	data = (float**)calloc(TraceNum, sizeof(float*));
-	for (i = 0 ; i < TraceNum; i++)	
+	for (i = 0 ; i < TraceNum; i++)
 		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
-	for (i = 0; i < TraceNum; i++)
+	for (i = 0; i < TraceNum; i++) {
 		fread(data[i], sizeof(float), TraceLength, rfp);
-	
+	}
 	fclose(rfp);
-//==============================================================//
-//					   Plaintext Allocation				    	//
-//==============================================================//
+
 	sprintf(buf, "%s%s", DIR, ptFN);
 	rfp = fopen(buf, "rb");
-	if (rfp == NULL) printf("%s 파일 읽기 오류", ptFN);
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
 
 	PT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
 		PT[i] = (u8*)calloc(16, sizeof(u8));
 	
-	for (i = 0; i < TraceNum; i++)	fread(PT[i], sizeof(char), 16, rfp);
-//==============================================================//
-//						Interim Check							//
-//				T1 | m = rand(), (Generate Mask Byte)			//
-//				T2 | x = p + m (XOR mask with PT)				//
-//				T3 | y = x + k (XOR masked PT with Key)			//
-//					   cut | Mixed data							// 
-//==============================================================//
-	int 	T1_START 	= 0;
-	int		T1_END		= 0;
-	int		T2_START	= 0;
-	int		T2_END		= 0;	// 이거 내일 단계단계 올려서 corr 값만 확인하자
-	int		T3_START 	= 0;
-	int		T3_END		= 0;
-	#if SW == 1
-	int 	len 		= (T1_END - T1_START) * (T2_END - T2_START);
-	#else
-	int		len 		= (T2_END - T2_START) * (T3_END - T3_START);
-	#endif
-	int		m			= 0;
-	float	**cut		= NULL;
-	float	*plus		= NULL;
-	float	*mean 		= NULL;
-//===================================================ㅇ==========// 발표 하루 전
-//					New data dynamic allocation					//
-//==============================================================//
-	cut = (float**)calloc(TraceNum, sizeof(float*));
-	for(i = 0 ; i < TraceNum ; i++)	cut[i] = (float*)calloc(len, sizeof(float));
-	plus = (float*) calloc(TraceLength, sizeof(float));
-	mean = (float*) calloc(TraceLength, sizeof(float));
-	corr = (double*)calloc(len, sizeof(double));
-	Sx   = (double*)calloc(len, sizeof(double));
-	Sxx  = (double*)calloc(len, sizeof(double));
-	Sxy  = (double*)calloc(len, sizeof(double));
-//==============================================================// 
-//				create new float trace, find E(X)		  		//
-//==============================================================//
-	for(i = 0 ; i < TraceNum ; i++)	{
-		for(j = 0 ; j < TraceLength ; j++) plus[j] += data[i][j];
+	for (i = 0; i < TraceNum; i++) {
+		fread(PT[i], sizeof(char), 16, rfp);
 	}
-	// 구간마다 전체 파형 데이터를 모음, 평균을 구하기 위해 전체 파형으로 나눔
-	for(i = 0 ; i < TraceLength ; i++) mean[i] = (float)(plus[i] / TraceNum);
 
-	for(i = 0 ; i < TraceNum ; i++)
+
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx   = (double*)calloc(TraceLength, sizeof(double));
+	Sxx  = (double*)calloc(TraceLength, sizeof(double));
+	Sxy  = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
 	{
-		m = 0;
-		for(j = T3_START ; j < T3_END ; j++) {
-			for(k = T2_START ; k < T2_END ; k++)
-			cut[i][m + (k - T2_START)] = (data[i][k] - mean[k]) * (data[i][j] - mean[j]);
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
 		}
-		m += T2_END - T2_START;
 	}
-//==============================================================//
-//						New data CPA							//
-//==============================================================//
-	printf("[CPA INFO] Mixed trL : %d     trN : %d\n", len, TraceNum);
-	for (i = 0; i < len; i++) {
-        for (j = 0; j < TraceNum; j++) {
-            Sx[i] += cut[j][i];
-            Sxx[i] += cut[j][i] * cut[j][i];
-        }
-    }
-	for(i = 0 ; i < 1 ; i++)
-	{	
+
+	for (int i = 0; i < 16 ; i++)
+	{
 		maxCorr = 0;
 		maxkey = 0;
-		memset(Sxy, 0, sizeof(double) * len);
-		for (key = 0; key < 256; key++) {
+		for (key = 0 ; key < 256; key++) {
 			Sy = 0;
 			Syy = 0;
-			memset(Sxy, 0, sizeof(double) * len);
-			for (j = 0; j < TraceNum; j++) {
-				iv = S[i % 4][PT[j][i] ^ key] ^ (PT[j][i] ^ key);
+			memset(Sxy, 0, sizeof(double)*TraceLength);
+			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
+               	iv = S[i % 4][PT[j][i] ^ key];
 				hw_iv = 0;
-
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
-
-				Sy += hw_iv; Syy += hw_iv * hw_iv;
-
-				for (k = 0 ; k < len ; k++) Sxy[k] += hw_iv * cut[j][k];
+			
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+				
+				for (k = startpt; k < endpt; k++) {
+					Sxy[k] += hw_iv * data[j][k];
+				} 
 			}
-			for (k = 0; k < len; k++) {
-				corr[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
 
-				if (fabs(corr[k]) > maxCorr) {
+			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+				//printf("%lf %lf %lf\n", a, b, c);
+
+				corr[j] = a / (b * c);
+				if (fabs(corr[j]) > maxCorr) {
 					maxkey = key;
-					maxCorr = fabs(corr[k]);
+					maxCorr = fabs(corr[j]);
 				}
 			}
 			if(key == 255)
 			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
 			else
-			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X], TE0[%d] TE1[%d]", i, ((double)key / 255) * 100, maxCorr, maxkey, T2_END, T3_END);
-			//printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% CR[%lf] K[%02X]", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100, maxCorr, maxkey);
+			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
 
 			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
 			fflush(stdout);
@@ -241,27 +205,15 @@ void CPA()
 			fwrite(corr, sizeof(double), TraceLength, wfp);
 			fclose(wfp);
 		}
+		
 		MK[i] = maxkey;
 	}
-//==============================================================//
-//						HEAP MEMORY	CANCEL						//
-//==============================================================//
+	puts("");
+
+	free(PT);
 	free(Sxy);
 	free(Sx);
 	free(Sxx);
-	free(corr);
-	free(plus);
-	free(mean);
-	free(cut);
-	free(PT);
 	free(data);
-}
-
-//==============================================================//	
-//							FIND MACRO							//	7000~12000
-//==============================================================//	12000~24000
-int main()
-{
-	puts(Progress);
-	CPA();
+	free(corr);
 }

@@ -3,12 +3,15 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 
-#define startpt 2001
-#define endpt 8000
+#define startpt 0
+#define endpt 5000
+
+#define TraceLength 24000
+#define TraceNum 1000
 
 typedef unsigned char u8;
 
@@ -43,8 +46,7 @@ int main()
 	double	*hw_wt;		// 해밍 x 전력의 합
 	double  *WT; // 실제 전력값들의 합, 전력값들 제곱의 합
 	double	a, b, c;
-	double** WT_data;  // 파동을 전체 저장할 데이터
-	int		TraceNum, TraceLength;
+	float** WT_data;  // 파동을 전체 저장할 데이터
 	int		key, maxkey;
 	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
 	int		i, j, k;	  // 반복문에 쓰이는 변수
@@ -56,18 +58,15 @@ int main()
 	rfp = fopen(buf, "rb");
 	if (rfp == NULL)
 		printf("%s 파일 읽기 오류", traceFN);
-
-	TraceLength = 24000;
-	TraceNum = 5000;
 	
 	// DATA 동적 할당
-	WT_data = (double**)calloc(TraceNum, sizeof(double*));
+	WT_data = (float**)calloc(TraceNum, sizeof(float*));
 	for (i = 0 ; i < TraceNum; i++)
-		WT_data[i] = (double*)calloc(TraceLength, sizeof(double));
+		WT_data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
 	// DATA 
 	for (i = 0; i < TraceNum; i++) {
-		fread(WT_data[i], sizeof(double), TraceLength, rfp);
+		fread(WT_data[i], sizeof(float), TraceLength, rfp);
 	}
 	fclose(rfp);
 

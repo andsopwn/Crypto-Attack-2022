@@ -1,1 +1,2 @@
-printf("ARIA CPA Progressing...\n");
+
+	sprintf(buf, "%s%s", DIR, ptFN);
