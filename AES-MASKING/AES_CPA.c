@@ -3,12 +3,12 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/"
-#define traceFN "traces.npy"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
+#define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 
 #define startpt 2001
-#define endpt 24000
+#define endpt 8000
 
 typedef unsigned char u8;
 
@@ -58,7 +58,7 @@ int main()
 		printf("%s 파일 읽기 오류", traceFN);
 
 	TraceLength = 24000;
-	TraceNum = 2000;
+	TraceNum = 5000;
 	
 	// DATA 동적 할당
 	WT_data = (double**)calloc(TraceNum, sizeof(double*));
