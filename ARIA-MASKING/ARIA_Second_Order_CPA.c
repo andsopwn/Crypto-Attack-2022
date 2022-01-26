@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA_MASKED/"
-#define traceFN "trace.bin"
+#define traceFN "nosc.bin"
 #define ptFN "plaintext.npy"
 #define SW 0
 #define TraceNum 2000
@@ -146,28 +146,29 @@ void CPA()
 //				T3 | y = x + k (XOR masked PT with Key)			//
 //					   cut | Mixed data							// 
 //==============================================================//
+	int		temp		= 600;
+	int		T2_START	= temp + 30;
+	int		T2_END		= T2_START + temp + 30;
+	int		T3_START 	= 1600;
+	int		T3_END		= T3_START + 100;
+	#if SW == 1
 	int 	T1_START 	= 0;
 	int		T1_END		= 0;
-	int		T2_START	= 0;
-	int		T2_END		= 0;	// 이거 내일 단계단계 올려서 corr 값만 확인하자
-	int		T3_START 	= 0;
-	int		T3_END		= 0;
-	#if SW == 1
 	int 	len 		= (T1_END - T1_START) * (T2_END - T2_START);
 	#else
 	int		len 		= (T2_END - T2_START) * (T3_END - T3_START);
 	#endif
 	int		m			= 0;
 	float	**cut		= NULL;
-	float	*plus		= NULL;
-	float	*mean 		= NULL;
-//===================================================ㅇ==========// 발표 하루 전
+	float	*sum		= NULL;
+	float	*avg 		= NULL;
+//==============================================================// 발표 하루 전
 //					New data dynamic allocation					//
 //==============================================================//
 	cut = (float**)calloc(TraceNum, sizeof(float*));
 	for(i = 0 ; i < TraceNum ; i++)	cut[i] = (float*)calloc(len, sizeof(float));
-	plus = (float*) calloc(TraceLength, sizeof(float));
-	mean = (float*) calloc(TraceLength, sizeof(float));
+	sum = (float*) calloc(TraceLength, sizeof(float));
+	avg = (float*) calloc(TraceLength, sizeof(float));
 	corr = (double*)calloc(len, sizeof(double));
 	Sx   = (double*)calloc(len, sizeof(double));
 	Sxx  = (double*)calloc(len, sizeof(double));
@@ -176,17 +177,17 @@ void CPA()
 //				create new float trace, find E(X)		  		//
 //==============================================================//
 	for(i = 0 ; i < TraceNum ; i++)	{
-		for(j = 0 ; j < TraceLength ; j++) plus[j] += data[i][j];
+		for(j = 0 ; j < TraceLength ; j++) sum[j] += data[i][j];
 	}
 	// 구간마다 전체 파형 데이터를 모음, 평균을 구하기 위해 전체 파형으로 나눔
-	for(i = 0 ; i < TraceLength ; i++) mean[i] = (float)(plus[i] / TraceNum);
+	for(i = 0 ; i < TraceLength ; i++) avg[i] = (float)(sum[i] / TraceNum);
 
 	for(i = 0 ; i < TraceNum ; i++)
 	{
 		m = 0;
 		for(j = T3_START ; j < T3_END ; j++) {
 			for(k = T2_START ; k < T2_END ; k++)
-			cut[i][m + (k - T2_START)] = (data[i][k] - mean[k]) * (data[i][j] - mean[j]);
+			cut[i][m + (k - T2_START)] = (data[i][k] - avg[k]) * (data[i][j] - avg[j]);
 		}
 		m += T2_END - T2_START;
 	}
@@ -250,8 +251,8 @@ void CPA()
 	free(Sx);
 	free(Sxx);
 	free(corr);
-	free(plus);
-	free(mean);
+	free(sum);
+	free(avg);
 	free(cut);
 	free(PT);
 	free(data);
