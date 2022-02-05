@@ -7,11 +7,14 @@
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define startpt 0
-#define endpt 24000
-
+#define startpt 	20000
+#define endpt 		24000
+#define G1_startpt 	820
+#define G1_endpt 	1065
+#define G2_startpt 	22280
+#define G2_endpt 	22450
 #define TraceLength 24000
-#define TraceNum 500
+#define TraceNum 	500
 
 typedef unsigned char u8;
 
@@ -99,7 +102,8 @@ int main()
 	u8**	PT = NULL;
 	u8**	CT = NULL;
 	u8		iv, hw_iv; 
-	u8		MK[16];	 
+	u8		GUESS1[16];
+	u8		GUESS2[16];
 	double	maxCorr; 
 	double* corr;	
 	double	Sy;	  
@@ -107,8 +111,8 @@ int main()
 	double	*Sxy;		// 해밍 x 전력의 합
 	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
 	double	a, b, c;
-	float** WT_data;  // 파동을 전체 저장할 데이터
-	int		key, maxkey;
+	float** data;  // 파동을 전체 저장할 데이터
+	int		key1, key2, maxkey1, maxkey2;
 	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
 	int		i, j, k;	  // 반복문에 쓰이는 변수
 	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
@@ -118,16 +122,16 @@ int main()
 	sprintf(buf, "%s%s", DIR, traceFN);
 	rfp = fopen(buf, "rb");
 	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", traceFN);
+		printf("%s 파일 읽기 오류", traceFN);	
 	
 	// DATA 동적 할당
-	WT_data = (float**)calloc(TraceNum, sizeof(float*));
+	data = (float**)calloc(TraceNum, sizeof(float*));
 	for (i = 0 ; i < TraceNum; i++)
-		WT_data[i] = (float*)calloc(TraceLength, sizeof(float));
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
 	// DATA 
 	for (i = 0; i < TraceNum; i++) {
-		fread(WT_data[i], sizeof(float), TraceLength, rfp);
+		fread(data[i], sizeof(float), TraceLength, rfp);
 	}
 	fclose(rfp);
 
@@ -157,7 +161,6 @@ int main()
 		fread(CT[i], sizeof(char), 16, rfp);
 	}
 
-
 	corr = (double*)calloc(TraceLength, sizeof(double));
 	Sx = (double*)calloc(TraceLength, sizeof(double));
 	Sxx = (double*)calloc(TraceLength, sizeof(double));
@@ -166,21 +169,21 @@ int main()
 	for (i = 0; i < TraceNum; i++)
 	{
 		for (j = startpt; j < endpt; j++) {
-			Sx[j] += WT_data[i][j];
-			Sxx[j] += WT_data[i][j] * WT_data[i][j];
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
 		}
 	}
 
 	for (int i = 0; i < 16 ; i++)
 	{
 		maxCorr = 0;
-		maxkey = 0;
-		for (key = 0 ; key < 256; key++) {
+		maxkey2 = 0;
+		for (key2 = 0 ; key2 < 256; key2++) {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-				iv = S[2][CT[j][i] ^ key]; // 공격지점, 배열 인자 실수 조심
+				iv = S[2][CT[j][i] ^ key2]; // ^ S[2][CT[j][i] ^ key2]; // 공격지점, 배열 인자 실수 조심
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
@@ -188,7 +191,7 @@ int main()
 				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
 				
 				for (k = startpt; k < endpt; k++) {
-					Sxy[k] += hw_iv * WT_data[j][k];
+					Sxy[k] += hw_iv * data[j][k];
 				} 
 			}
 
@@ -202,14 +205,17 @@ int main()
 
 				corr[j] = a / (b * c);
 				if (fabs(corr[j]) > maxCorr) {
-					maxkey = key;
+					maxkey2 = key2;
 					maxCorr = fabs(corr[j]);
 				}
 
 			}
-			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%%", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
+			if(key2 == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey2, maxCorr);
+			else
+			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key2 / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key2 / 255) * 100);
 
-			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
+			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key2);
 			fflush(stdout);
 			wfp = fopen(buf, "wb");
 			if (wfp == NULL)
@@ -218,19 +224,21 @@ int main()
 			fclose(wfp);
 			
 		}
-		printf("     %02X, %lf\n", maxkey, maxCorr);
-		MK[i] = maxkey;
+		GUESS1[i] = maxkey1;
+		GUESS2[i] = maxkey2;
 	}
 	printf("\n\n");
 
-	printf("MASTER KEY : 0x");
-	for (int i = 0; i < 16; i++)	printf("%02X", MK[i]);
+	printf("SECOND : 0x");
+	for (int i = 0; i < 16; i++)	printf("%02X", GUESS2[i]);
 	puts("");
+	puts("Second : 0xF64E800BD1F9F0A523D54C24AD0297FD");
 
 	free(PT);
+	free(CT);
 	free(Sxy);
 	free(Sx);
 	free(Sxx);
-	free(WT_data);
+	free(data);
 	free(corr);
 }

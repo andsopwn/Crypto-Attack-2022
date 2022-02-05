@@ -165,10 +165,10 @@ void CPA()
 //==============================================================// 발표 하루 전
 //					New data dynamic allocation					//
 //==============================================================//
-	cut = (float**)calloc(TraceNum, sizeof(float*));
+	cut  = (float**)calloc(TraceNum, sizeof(float*));
 	for(i = 0 ; i < TraceNum ; i++)	cut[i] = (float*)calloc(len, sizeof(float));
-	sum = (float*) calloc(TraceLength, sizeof(float));
-	avg = (float*) calloc(TraceLength, sizeof(float));
+	sum  = (float*) calloc(TraceLength, sizeof(float));
+	avg  = (float*) calloc(TraceLength, sizeof(float));
 	corr = (double*)calloc(len, sizeof(double));
 	Sx   = (double*)calloc(len, sizeof(double));
 	Sxx  = (double*)calloc(len, sizeof(double));
@@ -211,7 +211,7 @@ void CPA()
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double) * len);
 			for (j = 0; j < TraceNum; j++) {
-				iv = S[i % 4][PT[j][i] ^ key] ^ (PT[j][i] ^ key);
+				iv = S[i % 4][PT[j][i] ^ key] ^ PT[j][i]; // 평문 넣기
 				hw_iv = 0;
 
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
