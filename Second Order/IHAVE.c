@@ -206,7 +206,7 @@ void CPA()
         }
     }
 	printf("NEW TRACE LEN : %d\n", len);
-	for(i = 0 ; i < 1 ; i++)
+	for(i = 0 ; i < 16 ; i++)
 	{	
 		maxCorr = 0;
 		maxkey1 = 0;
