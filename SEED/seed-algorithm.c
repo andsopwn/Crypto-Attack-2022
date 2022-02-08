@@ -193,10 +193,6 @@ void KeySC(u8 *MK, u32 *RK) {
     }
 }
 
-void F_Function(u32 L0, u32 L1, u32 R0, u32 R1){
-    
-}
-
 void Encryption(u8 *PT, u32 *RK, u8 *CT) {
     u32 L0 = ZIP(PT);
     u32 L1 = ZIP(PT + 4);
@@ -206,13 +202,13 @@ void Encryption(u8 *PT, u32 *RK, u8 *CT) {
 
     L0 = R0;
     L1 = R1;
+
     T0 = R0 ^ RK[0];
     T1 = G_Function((R1 ^ RK[1]) ^ T0);
     T0 = G_Function(MOD(T0 ^ T1));
     T1 = G_Function(MOD(T0 ^ T1));
     T0 = MOD(T0 ^ T1);
-    R0 = T0;
-    R1 = T1;
+    
     printf("%08X %08X\n8081BC57 C4EA8A1F", T0, T1);
 
 
@@ -230,6 +226,8 @@ int main()
     u32 RK[32] = { 0x00, };
     //u8 CT[16] = { 0x5e, 0xba, 0xc6, 0xe0, 0x05, 0x4e, 0x16, 0x68, 0x19, 0xaf, 0xf1, 0xcc, 0x6d, 0x34, 0x6c, 0xdb };
     KeySC(MK, RK);
+
+
     Encryption(PT, RK, CT);
 
 }
