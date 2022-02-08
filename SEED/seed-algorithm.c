@@ -156,6 +156,8 @@ u32 ZIP(u8 *IN)
 #define UNZIP1(X) ((u8)(X >> 8))
 #define UNZIP2(X) ((u8)(X >> 16))
 #define UNZIP3(X) ((u8)(X >> 24))
+#define G_Function(X) (SS0[UNZIP0(X)] ^ SS1[UNZIP1(X)] ^ SS2[UNZIP2(X)] ^ SS3[UNZIP3(X)])
+#define MOD(X) (X) ^ (X & 0x100000000 ? 0x100000000 : 0)
 
 void KeySC(u8 *MK, u32 *RK) {
     u32 K[4];                                                                   // K = L0(A) || L1(B) || R0(C) || R1(D)
@@ -191,11 +193,32 @@ void KeySC(u8 *MK, u32 *RK) {
     }
 }
 
+void F_Function(u32 L0, u32 L1, u32 R0, u32 R1){
+    
+}
+
 void Encryption(u8 *PT, u32 *RK, u8 *CT) {
     u32 L0 = ZIP(PT);
     u32 L1 = ZIP(PT + 4);
     u32 R0 = ZIP(PT + 8);
     u32 R1 = ZIP(PT + 12);
+    u32 T0, T1;
+
+    L0 = R0;
+    L1 = R1;
+    T0 = R0 ^ RK[0];
+    T1 = G_Function((R1 ^ RK[1]) ^ T0);
+    T0 = G_Function(MOD(T0 ^ T1));
+    T1 = G_Function(MOD(T0 ^ T1));
+    T0 = MOD(T0 ^ T1);
+    R0 = T0;
+    R1 = T1;
+    printf("%08X %08X\n8081BC57 C4EA8A1F", T0, T1);
+
+
+    //T1 = SS0[UNZIP0(T1)] ^ SS1[UNZIP1(T1)] ^ SS2[UNZIP2(T1)] ^ SS3[UNZIP3(T1)];
+    //T1 = SS0[UNZIP0(T1)] ^ SS1[UNZIP1(T1)] ^ SS2[UNZIP2(T1)] ^ SS3[UNZIP3(T1)];
+    
     
 }
 
@@ -207,7 +230,6 @@ int main()
     u32 RK[32] = { 0x00, };
     //u8 CT[16] = { 0x5e, 0xba, 0xc6, 0xe0, 0x05, 0x4e, 0x16, 0x68, 0x19, 0xaf, 0xf1, 0xcc, 0x6d, 0x34, 0x6c, 0xdb };
     KeySC(MK, RK);
-
     Encryption(PT, RK, CT);
 
 }
