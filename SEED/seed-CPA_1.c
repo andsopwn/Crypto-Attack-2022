@@ -8,7 +8,7 @@
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
 #define startpt 0
-#define endpt 4000
+#define endpt 5000
 
 #define TraceLength 24000
 #define TraceNum 2000
@@ -16,11 +16,6 @@
 typedef unsigned char u8;
 typedef unsigned int u32;
 
-#define G_Function(X) (SS[0][(X) & 0xff] ^ SS[1][(X >> 8) & 0xff] ^ SS[2][(X >> 16) & 0xff] ^ SS[3][(X >> 24) & 0xff])
-static u32 KC[16] = {
-    0x9e3779b9, 0x3c6ef373, 0x78dde6e6, 0xf1bbcdcc, 0xe3779b99, 0xc6ef3733, 0x8dde6e67, 0x1bbcdccf, 
-    0x3779b99e, 0x6ef3733c, 0xdde6e678, 0xbbcdccf1, 0x779b99e3, 0xef3733c6, 0xde6e678d, 0xbcdccf1b
-};
 static u32 SS[4][256] = {
 {
     0x2989a1a8, 0x05858184, 0x16c6d2d4, 0x13c3d3d0, 0x14445054, 0x1d0d111c, 0x2c8ca0ac, 0x25052124,
@@ -160,8 +155,7 @@ static u32 SS[4][256] = {
 }
 };
 
-int main()
-{
+int main() {
 	u8**	PT = NULL;
 	//u8**	CT = NULL;
 	u8		iv, hw_iv; 
@@ -193,9 +187,8 @@ int main()
 		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
 	// DATA 
-	for (i = 0; i < TraceNum; i++) {
+	for (i = 0; i < TraceNum; i++)
 		fread(data[i], sizeof(float), TraceLength, rfp);
-	}
 	fclose(rfp);
 
 	sprintf(buf, "%s%s", DIR, ptFN);
@@ -207,9 +200,8 @@ int main()
 	for (i = 0; i < TraceNum; i++)
 		PT[i] = (u8*)calloc(16, sizeof(u8));
 	
-	for (i = 0; i < TraceNum; i++) {
+	for (i = 0; i < TraceNum; i++)
 		fread(PT[i], sizeof(char), 16, rfp);
-	}
 	/*
 	sprintf(buf, "%s%s", DIR, ctFN);
 	rfp = fopen(buf, "r");
@@ -225,7 +217,6 @@ int main()
 	}
 	*/
 
-
 	corr = (double*)calloc(TraceLength, sizeof(double));
 	Sx = (double*)calloc(TraceLength, sizeof(double));
 	Sxx = (double*)calloc(TraceLength, sizeof(double));
@@ -236,7 +227,7 @@ int main()
 		for (j = startpt; j < endpt; j++) {
 			Sx[j] += data[i][j];
 			Sxx[j] += data[i][j] * data[i][j];
-		
+        }
 	}
 
 	for (int i = 0; i < 4 ; i++)
@@ -250,6 +241,11 @@ int main()
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
                 //iv = PT[j][i]; // 평문 cpa
                 iv = PT[j][i + 8] ^ PT[j][i + 12] ^ key; // key = k1 + k0
+
+                if(i % 2 == 0)
+                iv = SS[3][iv];
+                else
+                iv = SS[0][iv];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			

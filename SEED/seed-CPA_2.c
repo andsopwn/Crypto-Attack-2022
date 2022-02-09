@@ -1,16 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <math.h>
+
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/SEED/"
+#define traceFN "trace.bin"
+#define ptFN "plaintext.npy"
+#define ctFN "ciphertext.npy"
+#define startpt 0
+#define endpt 5000
+
+#define TraceLength 24000
+#define TraceNum 2000
+
 typedef unsigned char u8;
 typedef unsigned int u32;
 
-#define G_Function(X) (SS0[(X) & 0xff] ^ SS1[(X >> 8) & 0xff] ^ SS2[(X >> 16) & 0xff] ^ SS3[(X >> 24) & 0xff])
-
-static u32 KC[16] = {
-    0x9e3779b9, 0x3c6ef373, 0x78dde6e6, 0xf1bbcdcc, 0xe3779b99, 0xc6ef3733, 0x8dde6e67, 0x1bbcdccf, 
-    0x3779b99e, 0x6ef3733c, 0xdde6e678, 0xbbcdccf1, 0x779b99e3, 0xef3733c6, 0xde6e678d, 0xbcdccf1b
-};
-
-static u32 SS0[256] = {
+static u32 SS[4][256] = {
+{
     0x2989a1a8, 0x05858184, 0x16c6d2d4, 0x13c3d3d0, 0x14445054, 0x1d0d111c, 0x2c8ca0ac, 0x25052124,
     0x1d4d515c, 0x03434340, 0x18081018, 0x1e0e121c, 0x11415150, 0x3cccf0fc, 0x0acac2c8, 0x23436360,
     0x28082028, 0x04444044, 0x20002020, 0x1d8d919c, 0x20c0e0e0, 0x22c2e2e0, 0x08c8c0c8, 0x17071314,
@@ -43,10 +50,9 @@ static u32 SS0[256] = {
     0x31013130, 0x2acae2e8, 0x2d4d616c, 0x1f4f535c, 0x24c4e0e4, 0x30c0f0f0, 0x0dcdc1cc, 0x08888088,
     0x16061214, 0x3a0a3238, 0x18485058, 0x14c4d0d4, 0x22426260, 0x29092128, 0x07070304, 0x33033330,
     0x28c8e0e8, 0x1b0b1318, 0x05050104, 0x39497178, 0x10809090, 0x2a4a6268, 0x2a0a2228, 0x1a8a9298
-};
-
-static u32 SS1[256] = {
-    0x38380830, 0xe828c8e0, 0x2c2d0d21, 0xa42686a2, 0xcc0fcfc3, 0xdc1eced2, 0xb03383b3, 0xb83888b0,
+}, 
+{
+	0x38380830, 0xe828c8e0, 0x2c2d0d21, 0xa42686a2, 0xcc0fcfc3, 0xdc1eced2, 0xb03383b3, 0xb83888b0,
     0xac2f8fa3, 0x60204060, 0x54154551, 0xc407c7c3, 0x44044440, 0x6c2f4f63, 0x682b4b63, 0x581b4b53,
     0xc003c3c3, 0x60224262, 0x30330333, 0xb43585b1, 0x28290921, 0xa02080a0, 0xe022c2e2, 0xa42787a3,
     0xd013c3d3, 0x90118191, 0x10110111, 0x04060602, 0x1c1c0c10, 0xbc3c8cb0, 0x34360632, 0x480b4b43,
@@ -78,10 +84,9 @@ static u32 SS1[256] = {
     0x0c0e0e02, 0x50104050, 0x38390931, 0x24260622, 0x30320232, 0x84048480, 0x68294961, 0x90138393,
     0x34370733, 0xe427c7e3, 0x24240420, 0xa42484a0, 0xc80bcbc3, 0x50134353, 0x080a0a02, 0x84078783,
     0xd819c9d1, 0x4c0c4c40, 0x80038383, 0x8c0f8f83, 0xcc0ecec2, 0x383b0b33, 0x480a4a42, 0xb43787b3
-};
-
-static u32 SS2[256] = {
-    0xa1a82989, 0x81840585, 0xd2d416c6, 0xd3d013c3, 0x50541444, 0x111c1d0d, 0xa0ac2c8c, 0x21242505,
+},
+{
+	0xa1a82989, 0x81840585, 0xd2d416c6, 0xd3d013c3, 0x50541444, 0x111c1d0d, 0xa0ac2c8c, 0x21242505,
     0x515c1d4d, 0x43400343, 0x10181808, 0x121c1e0e, 0x51501141, 0xf0fc3ccc, 0xc2c80aca, 0x63602343,
     0x20282808, 0x40440444, 0x20202000, 0x919c1d8d, 0xe0e020c0, 0xe2e022c2, 0xc0c808c8, 0x13141707,
     0xa1a42585, 0x838c0f8f, 0x03000303, 0x73783b4b, 0xb3b83b8b, 0x13101303, 0xd2d012c2, 0xe2ec2ece,
@@ -113,10 +118,9 @@ static u32 SS2[256] = {
     0x31303101, 0xe2e82aca, 0x616c2d4d, 0x535c1f4f, 0xe0e424c4, 0xf0f030c0, 0xc1cc0dcd, 0x80880888,
     0x12141606, 0x32383a0a, 0x50581848, 0xd0d414c4, 0x62602242, 0x21282909, 0x03040707, 0x33303303,
     0xe0e828c8, 0x13181b0b, 0x01040505, 0x71783949, 0x90901080, 0x62682a4a, 0x22282a0a, 0x92981a8a
-};
-
-static u32 SS3[256] = {
-    0x08303838, 0xc8e0e828, 0x0d212c2d, 0x86a2a426, 0xcfc3cc0f, 0xced2dc1e, 0x83b3b033, 0x88b0b838,
+},
+{
+	0x08303838, 0xc8e0e828, 0x0d212c2d, 0x86a2a426, 0xcfc3cc0f, 0xced2dc1e, 0x83b3b033, 0x88b0b838,
     0x8fa3ac2f, 0x40606020, 0x45515415, 0xc7c3c407, 0x44404404, 0x4f636c2f, 0x4b63682b, 0x4b53581b,
     0xc3c3c003, 0x42626022, 0x03333033, 0x85b1b435, 0x09212829, 0x80a0a020, 0xc2e2e022, 0x87a3a427,
     0xc3d3d013, 0x81919011, 0x01111011, 0x06020406, 0x0c101c1c, 0x8cb0bc3c, 0x06323436, 0x4b43480b,
@@ -148,113 +152,146 @@ static u32 SS3[256] = {
     0x0e020c0e, 0x40505010, 0x09313839, 0x06222426, 0x02323032, 0x84808404, 0x49616829, 0x83939013,
     0x07333437, 0xc7e3e427, 0x04202424, 0x84a0a424, 0xcbc3c80b, 0x43535013, 0x0a02080a, 0x87838407,
     0xc9d1d819, 0x4c404c0c, 0x83838003, 0x8f838c0f, 0xcec2cc0e, 0x0b33383b, 0x4a42480a, 0x87b3b437
+}
 };
 
-void KeySC(u8 *MK, u32 *RK) {
-    u32 A, B, C, D;
-    u32 KL, KR;
-    u32 TEMP;
-    
-    A = (((MK[0] << 24) ^ (MK[1] << 16)) ^ (MK[2] << 8)) ^ MK[3];
-    B = (((MK[4] << 24) ^ (MK[5] << 16)) ^ (MK[6] << 8)) ^ MK[7];
-    C = (((MK[8] << 24) ^ (MK[9] << 16)) ^ (MK[10] << 8)) ^ MK[11];
-    D = (((MK[12] << 24) ^ (MK[13] << 16)) ^ (MK[14] << 8)) ^ MK[15];
+int main() {
+	u8**	PT = NULL;
+	//u8**	CT = NULL;
+	u8		iv, hw_iv; 
+	u8		MK[16] = { 0x00, };
+	int 	val;
+	double	maxCorr; 
+	double* corr;	
+	double	Sy;	  
+	double	Syy, *Sxx; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
+	double	*Sxy;		// 해밍 x 전력의 합
+	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
+	double	a, b, c;
+	float** data;  // 파동을 전체 저장할 데이터
+	int		key, maxkey;
+	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
+	int		i, j, k;	  // 반복문에 쓰이는 변수
+	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
+	double	cur, all;
+	FILE	*rfp, * wfp;
+    u8  ATT[4] = { 0xbb, 0xb8, 0x2e, 0x52 };
 
-    for(int i = 1 ; i <= 16 ; i++) {
-        KL = (A + C) - KC[i - 1];
-        KR = (B - D) + KC[i - 1];
+	sprintf(buf, "%s%s", DIR, traceFN);
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
+	// DATA 동적 할당
+	data = (float**)calloc(TraceNum, sizeof(float*));
+	for (i = 0 ; i < TraceNum; i++)
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
+	
+	// DATA 
+	for (i = 0; i < TraceNum; i++)
+		fread(data[i], sizeof(float), TraceLength, rfp);
+	fclose(rfp);
 
-        KL = G_Function(KL);
-        KR = G_Function(KR);
+	sprintf(buf, "%s%s", DIR, ptFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
 
-        if(i % 2 == 1) {
-            TEMP = A;
-            A = (A >> 8) ^ (B << 24);
-            B = (B >> 8) ^ (TEMP << 24); 
+	PT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		PT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++)
+		fread(PT[i], sizeof(char), 16, rfp);
+	/*
+	sprintf(buf, "%s%s", DIR, ctFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ctFN);
+
+	CT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		CT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++) {
+		fread(CT[i], sizeof(char), 16, rfp);
+	}
+	*/
+
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
+	{
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
         }
-        else {
-            TEMP = C;
-            C = (C << 8) ^ (D >> 24);
-            D = (D << 8) ^ (TEMP >> 24);
+	}
+
+	for (int i = 0; i < 4 ; i++)
+	{
+		maxCorr = 0;
+		maxkey = 0;
+		for (key = 0 ; key < 256; key++) {
+			Sy = 0;
+			Syy = 0;
+			memset(Sxy, 0, sizeof(double)*TraceLength);
+			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
+                //iv = PT[j][i]; // 평문 cpa
+                iv = PT[j][i + 8] ^ key;
+                iv = (ATT[i] - iv) & 0xff;
+				hw_iv = 0;
+				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+			
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv; 
+				
+				for (k = startpt; k < endpt; k++)
+					Sxy[k] += hw_iv * data[j][k];
+			}
+
+			for (j = startpt; j < endpt; j++) { 
+
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+				corr[j] = a / (b * c);
+				if (fabs(corr[j]) > maxCorr) {
+					maxkey = key;
+					maxCorr = fabs(corr[j]);
+                    val = j;
+				}
+			}
+            if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] POS[%d]                          \n", i, maxkey, maxCorr, val);
+			else
+			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X] POS[%d]", i, ((double)key / 255) * 100, maxCorr, maxkey, val);
+
+			sprintf(buf, "%sct/%02dth.ct", DIR, i);
+			fflush(stdout);
+			wfp = fopen(buf, "wb");
+			if (wfp == NULL)
+				printf("블록 쓰기 에러\n");
+			fwrite(corr, sizeof(double), TraceLength, wfp);
+			fclose(wfp);
         }
-        
-        RK[(i - 1) * 2] = KL;
-        RK[(i - 1) * 2 + 1] = KR;
-        printf("%02d KL : %08X, KR : %08X\n", i, KL, KR);
-    }
-}
+		MK[i] = maxkey;
+	}
+	printf("\n\n");
 
-u32 ZIP(u8 *IN) {
-    return (IN[0] << 24) | (IN[1] << 16) | (IN[2] << 8) | IN[3];
-}
+	printf("MASTER KEY : 0x");
+	for (int i = 0; i < 16; i++)	printf("%02X", MK[i]);
+	puts("");
 
-void Encryption(u8 *PT, u32 *RK, u8 *CT) {
-    u32 L0 = ZIP(PT);
-    u32 L1 = ZIP(PT + 4);
-    u32 R0 = ZIP(PT + 8);
-    u32 R1 = ZIP(PT + 12);
-    u32 C, D;
-    u32 T0, T1;
-    //printf("         L0       L1       R0       R1\n01R : %08lX %08lX %08lX %08lX\n", L0, L1, R0, R1);
-    for(int i = 0 ; i < 15 ; i++) {
-        T0 = R0;
-        T1 = R1;
-        C = R0 ^ RK[i * 2];
-        D = R1 ^ RK[i * 2 + 1];
-        D ^= C;
-        D = G_Function(D);
-        C = (C + D) & 0xffffffff;
-        C = G_Function(C);
-        D = (C + D) & 0xffffffff;
-        D = G_Function(D);
-        C = (C + D) & 0xffffffff;
-
-        R0 = L0 ^ C;
-        R1 = L1 ^ D;
-        L0 = T0;
-        L1 = T1;
-        //printf("%02dR : %08lX %08lX %08lX %08lX\n", i+2, L0, L1, R0, R1);
-    }
-    // LAST ROUND
-    C = R0 ^ RK[30];
-    D = R1 ^ RK[31];
-    D ^= C;
-    D = G_Function(D);
-    C = (C + D) & 0xffffffff;
-    C = G_Function(C);
-    D = (C + D) & 0xffffffff;
-    D = G_Function(D);
-    C = (C + D) & 0xffffffff;
-    L0 ^= C;
-    L1 ^= D;
-//    printf("CIT : %08lX %08lX %08lX %08lX\n", L0, L1, R0, R1);
-
-    CT[ 0] = (L0 >> 24) & 0xff;  CT[ 1] = (L0 >> 16) & 0xff; CT[ 2] = (L0 >> 8) & 0xff; CT[3] = L0 & 0xff;
-    CT[ 4] = (L1 >> 24) & 0xff;  CT[ 5] = (L1 >> 16) & 0xff; CT[ 6] = (L1 >> 8) & 0xff; CT[ 7] = L1 & 0xff;
-    CT[ 8] = (R0 >> 24) & 0xff;  CT[ 9] = (R0 >> 16) & 0xff; CT[10] = (R0 >> 8) & 0xff; CT[11] = R0 & 0xff;
-    CT[12] = (R1 >> 24) & 0xff;  CT[13] = (R1 >> 16) & 0xff; CT[14] = (R1 >> 8) & 0xff; CT[15] = R1 & 0xff;
-}
-
-void prt(u8 *X) {
-    for(int i = 0 ; i < 16 ; i++)
-    printf("%02X ", X[i]);
-    puts("");
-}
-
-int main()
-{
-    //u8 MK[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
-    u8 MK[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    u8 PT[16] = { 0xa3, 0xea, 0x4c, 0x33, 0x8a, 0x16, 0x52, 0xa3, 0xd3, 0xb3, 0x73, 0x8b, 0x1a, 0xf5, 0x84, 0x46 };
-    u8 CT[16] = { 0x00, };
-    u32 RK[32] = { 0x00, };
-    //u8 CT[16] = { 0x5e, 0xba, 0xc6, 0xe0, 0x05, 0x4e, 0x16, 0x68, 0x19, 0xaf, 0xf1, 0xcc, 0x6d, 0x34, 0x6c, 0xdb };
-    KeySC(MK, RK);
-    Encryption(PT, RK, CT);
-
-    printf("Plaintext  : ");
-    prt(PT);
-
-    printf("Ciphertext : ");
-    prt(CT);
+	free(PT);
+	//free(CT);
+	free(Sxy);
+	free(Sx);
+	free(Sxx);
+	free(data);
+	free(corr);
 }
