@@ -150,6 +150,7 @@ static u32 SS3[256] = {
     0xc9d1d819, 0x4c404c0c, 0x83838003, 0x8f838c0f, 0xcec2cc0e, 0x0b33383b, 0x4a42480a, 0x87b3b437
 };
 
+static u32 SSS[256] = { 0x00, };
 void KeySC(u8 *MK, u32 *RK) {
     u32 A, B, C, D;
     u32 KL, KR;
@@ -214,7 +215,6 @@ void Encryption(u8 *PT, u32 *RK, u8 *CT) {
         L0 = T0;
         L1 = T1;
         //printf("%02dR : %08lX %08lX %08lX %08lX\n", i+2, L0, L1, R0, R1);
-
     }
     // LAST ROUND
     C = R0 ^ RK[30];
@@ -234,6 +234,9 @@ void Encryption(u8 *PT, u32 *RK, u8 *CT) {
     CT[ 4] = (L1 >> 24) & 0xff;  CT[ 5] = (L1 >> 16) & 0xff; CT[ 6] = (L1 >> 8) & 0xff; CT[ 7] = L1 & 0xff;
     CT[ 8] = (R0 >> 24) & 0xff;  CT[ 9] = (R0 >> 16) & 0xff; CT[10] = (R0 >> 8) & 0xff; CT[11] = R0 & 0xff;
     CT[12] = (R1 >> 24) & 0xff;  CT[13] = (R1 >> 16) & 0xff; CT[14] = (R1 >> 8) & 0xff; CT[15] = R1 & 0xff;
+
+    for(int i = 0 ; i < 256 ; i++)
+    SSS[i] = SS0[i] ^ 0x3f;
 }
 
 void prt(u8 *X) {

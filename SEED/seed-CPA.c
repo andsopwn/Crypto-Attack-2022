@@ -7,8 +7,8 @@
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define startpt 4000
-#define endpt 10000
+#define startpt 0
+#define endpt 4000
 
 #define TraceLength 24000
 #define TraceNum 2000
@@ -236,7 +236,7 @@ int main()
 		for (j = startpt; j < endpt; j++) {
 			Sx[j] += data[i][j];
 			Sxx[j] += data[i][j] * data[i][j];
-		}
+		
 	}
 
 	for (int i = 0; i < 4 ; i++)
@@ -248,7 +248,8 @@ int main()
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-                iv = SS[i % 4][PT[j][i + 8] ^ PT[j][i + 12] ^ key]; // key = k1 + k0
+                //iv = PT[j][i]; // 평문 cpa
+                iv = PT[j][i + 8] ^ PT[j][i + 12] ^ key; // key = k1 + k0
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
