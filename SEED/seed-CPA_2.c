@@ -8,7 +8,7 @@
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
 #define startpt 0
-#define endpt 5000
+#define endpt 6200
 
 #define TraceLength 24000
 #define TraceNum 2000
@@ -241,8 +241,7 @@ int main() {
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
                 //iv = PT[j][i]; // 평문 cpa
-                iv = PT[j][i + 8] ^ key;
-                iv = (ATT[i] - iv) & 0xff;
+                iv = ((PT[j][i] ^ key) - ATT[i]) &0xff;
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
