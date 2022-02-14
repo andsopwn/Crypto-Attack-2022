@@ -14,7 +14,7 @@
 #define TraceNum 2000
 
 typedef unsigned char u8;
-typedef unsigned int u32;
+typedef unsigned long int u32;
 
 static u32 SS[4][256] = {
 {
@@ -176,6 +176,8 @@ int main() {
 	double	cur, all;
 	FILE	*rfp, * wfp;
     u8  ATT[4] = { 0xbb, 0xb8, 0x2e, 0x52 };
+    u8  sum = 0x00;
+    u32 temp = 0x00;
 
 	sprintf(buf, "%s%s", DIR, traceFN);
 	rfp = fopen(buf, "rb");
@@ -241,33 +243,53 @@ int main() {
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
                 //iv = PT[j][i]; // 평문 cpa
-                iv = ((PT[j][i] ^ key) - ATT[i]) &0xff;
+                //iv = PT[j][i] ^ key;
+                iv = PT[j][i + 8] ^ PT[j][i + 12] ^ ATT[i];
+                if(i % 2 == 0)
+                iv = SS[3][iv];
+                else
+                iv = SS[0][iv];
+
+                //iv = (u8)(iv + val);
+                temp ^= iv;
+                if(i == 0)
+                iv = (temp >> 24) & 0xff;
+                else if(i == 1)
+                iv = (temp >> 16) & 0xff;
+                else if(i == 2)
+                iv = (temp >> 8) & 0xff;
+                else
+                iv = temp & 0xff;
+
+                iv = ((PT[j][i + 8] ^ key) + iv) & 0xff;
+
 				hw_iv = 0;
-				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+
+				for (k = 0 ; k < 8 ; k++) hw_iv += ((iv >> k) & 1);
 			
 				Sy += hw_iv;
-				Syy += hw_iv * hw_iv; 
+				Syy += hw_iv * hw_iv;
 				
 				for (k = startpt; k < endpt; k++)
 					Sxy[k] += hw_iv * data[j][k];
+
+                if(i == 3) temp = 0x00;
 			}
 
 			for (j = startpt; j < endpt; j++) { 
-
 				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
 				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
 				c = sqrt((double)TraceNum * Syy - Sy * Sy);
 
 				corr[j] = a / (b * c);
 				if (fabs(corr[j]) > maxCorr) {
-					maxkey = key;
+                    maxkey = key;
 					maxCorr = fabs(corr[j]);
-                    val = j;
 				}
 			}
             if(key == 255)
 			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] POS[%d]                          \n", i, maxkey, maxCorr, val);
-			else
+			else    
 			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X] POS[%d]", i, ((double)key / 255) * 100, maxCorr, maxkey, val);
 
 			sprintf(buf, "%sct/%02dth.ct", DIR, i);
