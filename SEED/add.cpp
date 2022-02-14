@@ -142,7 +142,6 @@ static u32 SS[4][256] = {
 }
 };
 
-
 int main() {
     //printf("%02X ", 0x7c8f8c7e ^ 0xc737a22c);
     u32 a = 0x08090a0b;

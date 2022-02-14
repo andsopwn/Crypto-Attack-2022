@@ -1,22 +1,21 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define G1_startpt 	820
-#define G1_endpt 	1065
-#define G2_startpt 	22280
-#define G2_endpt 	22450
-#define TraceLength 24000
-#define TraceNum 	500
+#define startpt 0
+#define endpt 24000
 
-#define Progress "-------------------------------------\nAES Second Order CPA Progressing...\n-------------------------------------"
+#define TraceLength 24000
+#define TraceNum 2000
+
 typedef unsigned char u8;
 
-const u8    S[4][256] = {
+static const u8    S[4][256] = {
     // Sbox Type 1
 {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -94,193 +93,149 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-void CPA()
+
+int main()
 {
-	float		**data		= NULL;
-	u8			**PT 		= NULL;
-	u8			**CT		= NULL;
-	u8			iv, hw_iv; 
-	u8			GUESS1[16];	 
-	u8			GUESS2[16];
-	double  	*Sx; 			// 전력
-	double		Sy;	  			// 해밍웨이트
-	double		*Sxx;
-	double		Syy;
-	double		*Sxy;
-	double	 	*corr;	
-	double		maxCorr;
-	double		a, b, c;
-	int			key1, key2;
-	int			maxkey1, maxkey2;
-	int			x, y;
-	int			i, j, k;
-	char		buf[256];
-	double		cur, all;
-	FILE		*rfp, * wfp;
+	u8**	PT = NULL;
+	u8**	CT = NULL;
+	u8		iv, hw_iv; 
+	u8		MK[16];	 
+	double	maxCorr; 
+	double* corr;	
+	double	Sy;	  
+	double	Syy, *Sxx; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
+	double	*Sxy;		// 해밍 x 전력의 합
+	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
+	double	a, b, c;
+	float** data;  // 파동을 전체 저장할 데이터
+	int		key, maxkey;
+	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
+	int		i, j, k;	  // 반복문에 쓰이는 변수
+	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
+	double	cur, all;
+	int		maxvalue;
+	FILE	*rfp, * wfp;
 
-//==============================================================//
-//					Measured Power Allocation					//
-//==============================================================//
 	sprintf(buf, "%s%s", DIR, traceFN);
-	rfp = fopen(buf, "rb"); 
-	if (rfp == NULL) printf("%s 파일 읽기 오류", traceFN);
-
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
+	// DATA 동적 할당
 	data = (float**)calloc(TraceNum, sizeof(float*));
-	for (i = 0 ; i < TraceNum; i++)	
+	for (i = 0 ; i < TraceNum; i++)
 		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
-	for (i = 0; i < TraceNum; i++)
+	// DATA 
+	for (i = 0; i < TraceNum; i++) {
 		fread(data[i], sizeof(float), TraceLength, rfp);
-	
+	}
 	fclose(rfp);
-//==============================================================//
-//					   PT, CT Allocation				    	//
-//==============================================================//
+
 	sprintf(buf, "%s%s", DIR, ptFN);
-	rfp = fopen(buf, "rb");
-	if (rfp == NULL) printf("%s 파일 읽기 오류", ptFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
 
 	PT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
 		PT[i] = (u8*)calloc(16, sizeof(u8));
 	
-	for (i = 0; i < TraceNum; i++)	fread(PT[i], sizeof(char), 16, rfp);
+	for (i = 0; i < TraceNum; i++) {
+		fread(PT[i], sizeof(char), 16, rfp);
+	}
 
 	sprintf(buf, "%s%s", DIR, ctFN);
-	rfp = fopen(buf, "rb");
-	if (rfp == NULL) printf("%s 파일 읽기 오류", ctFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ctFN);
 
 	CT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
 		CT[i] = (u8*)calloc(16, sizeof(u8));
 	
-	for (i = 0; i < TraceNum; i++)	fread(PT[i], sizeof(char), 16, rfp);
-//==============================================================//
-//						Interim Check							//
-//				T1 | m = rand(), (Generate Mask Byte)			//
-//				T2 | x = p + m (XOR mask with PT)				//
-//				T3 | y = x + k (XOR masked PT with Key)			//
-//					   cut | Mixed data							// 
-//==============================================================//
-	int		len 		= (G1_endpt - G1_startpt) * (G2_endpt - G2_startpt);
-	int		m			= 0;
-	float	**cut		= NULL;
-	float	*sum		= NULL;
-	float	*avg 		= NULL;
-//==============================================================// 발표 하루 전
-//					New data dynamic allocation					//
-//==============================================================//
-	cut  = (float**)calloc(TraceNum, sizeof(float*));
-	for(i = 0 ; i < TraceNum ; i++)	cut[i] = (float*)calloc(len, sizeof(float));
-	sum  = (float*) calloc(TraceLength, sizeof(float));
-	avg  = (float*) calloc(TraceLength, sizeof(float));
-	corr = (double*)calloc(len, sizeof(double));
-	Sx   = (double*)calloc(len, sizeof(double));
-	Sxx  = (double*)calloc(len, sizeof(double));
-	Sxy  = (double*)calloc(len, sizeof(double));
-//==============================================================// 
-//				create new float trace, find E(X)		  		//
-//==============================================================//
-	for(i = 0 ; i < TraceNum ; i++)	{
-		for(j = 0 ; j < TraceLength ; j++) sum[j] += data[i][j];
+	for (i = 0; i < TraceNum; i++) {
+		fread(CT[i], sizeof(char), 16, rfp);
 	}
-	// 구간마다 전체 파형 데이터를 모음, 평균을 구하기 위해 전체 파형으로 나눔
-	for(i = 0 ; i < TraceLength ; i++) avg[i] = (float)(sum[i] / TraceNum);
 
-	for(i = 0 ; i < TraceNum ; i++)
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
 	{
-		m = 0;
-		for(j = G2_startpt ; j < G2_endpt ; j++) {
-			for(k = G1_startpt ; k < G1_endpt ; k++)
-			cut[i][m + (k - G1_startpt)] = (data[i][k] - avg[k]) * (data[i][j] - avg[j]);
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
 		}
-		m += G1_endpt - G1_startpt;
 	}
-//==============================================================//
-//						New data CPA							//
-//==============================================================//
-	for (i = 0; i < len; i++) {
-        for (j = 0; j < TraceNum; j++) {
-            Sx[i] += cut[j][i];
-            Sxx[i] += cut[j][i] * cut[j][i];
-        }
-    }
-	printf("NEW TRACE LEN : %d\n", len);
-	for(i = 0 ; i < 16 ; i++)
-	{	
+
+	for (int i = 0; i < 16 ; i++)
+	{
 		maxCorr = 0;
-		maxkey1 = 0;
-		maxkey2 = 0;
-		memset(Sxy, 0, sizeof(double) * len);
-		for(key1 = 0; key1 < 256; key1++) 
-		{
-			maxCorr = 0;
-			maxkey1 = 0;
-			maxkey2 = 0;
-			for(key2 = 0 ; key2 < 256 ; key2++) 
-			{
-				Sy = 0;
-				Syy = 0;
-				memset(Sxy, 0, sizeof(double) * len);
-				for (j = 0; j < TraceNum; j++) {
-					iv = S[0][PT[j][i] ^ key1] ^ (CT[j][i] ^ key2);// 평문 넣기
-					hw_iv = 0;
-
-					for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
-
-					Sy += hw_iv; Syy += hw_iv * hw_iv;
-
-					for (k = 0 ; k < len ; k++) Sxy[k] += hw_iv * cut[j][k];
-				}
-				for (k = 0; k < len; k++) 
-				{
-					corr[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
-
-					if (fabs(corr[k]) > maxCorr) 
-					{
-						maxkey1 = key1;
-						maxkey2 = key2;
-						maxCorr = fabs(corr[k]);
-					}
-				}
-				if(key2 == 255)
-				printf("\r  %02dth Block | KEY1[%02X] KEY2[%02X] CORR[%lf]                          \n", i, maxkey1, maxkey2, maxCorr);
-				else {
-				printf("\r%02dth Block CR[%lf] K1[%02X] K2[%02X] | IM DOING : %02X %02X", i, maxCorr, maxkey1, maxkey2, key1, key2);
-				fflush(stdout);
-				}
-				sprintf(buf, "%sct/%02d_%02X(%02X).corrtrace", DIR, i, key1, key2);
-				fflush(stdout);
-				wfp = fopen(buf, "wb");
-				if (wfp == NULL)
-					printf("블록 쓰기 에러\n");
-				fwrite(corr, sizeof(double), len, wfp);
-				fclose(wfp);
+		maxkey = 0;
+		//for (key = 0 ; key < 256; key++) {
+			Sy = 0;
+			Syy = 0;
+			memset(Sxy, 0, sizeof(double)*TraceLength);
+			for (j = 0; j < TraceNum; j++) { 
+				iv = S[0][PT[j][i]] ^ 0x8f;
+				hw_iv = 0;
+				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+			
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+				
+				for (k = startpt; k < endpt; k++) {
+					Sxy[k] += hw_iv * data[j][k];
+				} 
 			}
-		}
-		GUESS1[i] = maxkey1;
-		GUESS2[i] = maxkey2;
+
+			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+				//printf("%lf %lf %lf\n", a, b, c);
+
+				corr[j] = a / (b * c);
+				if (fabs(corr[j]) > maxCorr) {
+					maxkey = key;
+					maxCorr = fabs(corr[j]);
+					maxvalue = j;
+				}
+
+			}
+			if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] MAXVAL %d                          \n", i, maxkey, maxCorr, maxvalue);
+			else {
+			printf("\r%02dth Block CR[%lf] K1[%02X] | IM DOING : %02X | %d", i, maxCorr, maxkey, key, maxvalue);
+			fflush(stdout);
+			}
+			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
+			fflush(stdout);
+			wfp = fopen(buf, "wb");
+			if (wfp == NULL)
+				printf("블록 쓰기 에러\n");
+			fwrite(corr, sizeof(double), TraceLength, wfp);
+			fclose(wfp);
+			
+	//	}
+		puts("");
+		MK[i] = maxkey;
 	}
-//==============================================================//
-//						HEAP MEMORY	CANCEL						//
-//==============================================================//
+	printf("\n\n");
+
+	printf("MASTER KEY : 0x");
+	for (int i = 0; i < 16; i++)	printf("%02X", MK[i]);
+	puts("");
+
+	free(PT);
 	free(Sxy);
 	free(Sx);
 	free(Sxx);
-	free(corr);
-	free(sum);
-	free(avg);
-	free(cut);
-	free(PT);
-	free(CT);
 	free(data);
-}
-
-//==============================================================//	
-//							FIND MACRO							//	7000~12000
-//==============================================================//	12000~24000
-int main()
-{
-	puts(Progress);
-	CPA();
+	free(corr);
 }

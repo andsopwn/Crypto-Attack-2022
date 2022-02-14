@@ -251,20 +251,14 @@ int main() {
                 iv = SS[0][iv];
 
                 //iv = (u8)(iv + val);
-                temp ^= iv;
-                if(i == 0)
-                iv = (temp >> 24) & 0xff;
-                else if(i == 1)
-                iv = (temp >> 16) & 0xff;
-                else if(i == 2)
-                iv = (temp >> 8) & 0xff;
-                else
-                iv = temp & 0xff;
+                iv = (PT[j][i + 8] ^ key - iv);
 
-                iv = ((PT[j][i + 8] ^ key) + iv) & 0xff;
+                if(i % 2 == 0)
+                iv = SS[2][iv];
+                else
+                iv = SS[1][iv];
 
 				hw_iv = 0;
-
 				for (k = 0 ; k < 8 ; k++) hw_iv += ((iv >> k) & 1);
 			
 				Sy += hw_iv;
@@ -273,7 +267,6 @@ int main() {
 				for (k = startpt; k < endpt; k++)
 					Sxy[k] += hw_iv * data[j][k];
 
-                if(i == 3) temp = 0x00;
 			}
 
 			for (j = startpt; j < endpt; j++) { 
@@ -288,9 +281,9 @@ int main() {
 				}
 			}
             if(key == 255)
-			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] POS[%d]                          \n", i, maxkey, maxCorr, val);
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
 			else    
-			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X] POS[%d]", i, ((double)key / 255) * 100, maxCorr, maxkey, val);
+			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X]", i, ((double)key / 255) * 100, maxCorr, maxkey);
 
 			sprintf(buf, "%sct/%02dth.ct", DIR, i);
 			fflush(stdout);
