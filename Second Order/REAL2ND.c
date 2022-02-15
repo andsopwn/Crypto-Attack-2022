@@ -6,8 +6,10 @@
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-//#define G1_startpt 	10000
-//#define G1_endpt 	10080
+#define G1_startpt 	11800
+#define G1_endpt 	11900
+//#define G2_startpt 	12380
+//#define G2_endpt 	12880
 #define G2_startpt 	12380
 #define G2_endpt 	12880
 #define TraceLength 24000
@@ -94,15 +96,15 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-void CPA(int msbox)
+void CPA()
 {
 	float		**data		= NULL;
 	u8			**PT 		= NULL;
 	u8			**CT		= NULL;
 	u8			iv, hw_iv; 
 	u8			GUESS[16];
-	double  	*Sx; 			// 전력
-	double		Sy;	  			// 해밍웨이트
+	double  	*Sx;
+	double		Sy;
 	double		*Sxx;
 	double		Syy;
 	double		*Sxy;
@@ -117,9 +119,17 @@ void CPA(int msbox)
 	double		cur, all;
 	FILE		*rfp, * wfp;
 
-	int G1_startpt = msbox;
-	int	G1_endpt = msbox + 80;
-
+	//int G1_startpt = msbox;
+	//int	G1_endpt = msbox + 80;
+//==============================================================//
+//						Interim Check							//
+//					   cut | Mixed data							// 
+//==============================================================//
+	int		len 		= (G1_endpt - G1_startpt) * (G2_endpt - G2_startpt);
+	int		m			= 0;
+	float	**cut		= NULL;
+	float	*sum		= NULL;
+	float	*avg 		= NULL;
 //==============================================================//
 //					Measured Power Allocation					//
 //==============================================================//
@@ -158,15 +168,6 @@ void CPA(int msbox)
 	
 	for (i = 0; i < TraceNum; i++)	fread(PT[i], sizeof(char), 16, rfp); */
 //==============================================================//
-//						Interim Check							//
-//					   cut | Mixed data							// 
-//==============================================================//
-	int		len 		= (G1_endpt - G1_startpt) * (G2_endpt - G2_startpt);
-	int		m			= 0;
-	float	**cut		= NULL;
-	float	*sum		= NULL;
-	float	*avg 		= NULL;
-//==============================================================// 발표 하루 전
 //					New data dynamic allocation					//
 //==============================================================//
 	cut  = (float**)calloc(TraceNum, sizeof(float*));
@@ -214,8 +215,8 @@ void CPA(int msbox)
             Sxx[i] += cut[j][i] * cut[j][i];
         }
     }
-	//printf("NEW TRACE LEN : %d\n", len);
-	for(i = 0 ; i < 1 ; i++)
+	printf("NEW TRACE LEN : %d\n", len);
+	for(i = 0 ; i < 16 ; i++)
 	{	
 		maxCorr = 0;
 		maxkey = 0;
@@ -239,8 +240,7 @@ void CPA(int msbox)
 			{
 				corr[k] = ((double)TraceNum * Sxy[k] - Sx[k] * Sy) / sqrt(((double)TraceNum * Sxx[k] - Sx[k] * Sx[k]) * ((double)TraceNum * Syy - Sy * Sy));
 
-				if (fabs(corr[k]) > maxCorr) 
-				{
+				if (fabs(corr[k]) > maxCorr) {
 					maxkey = key;
 					maxCorr = fabs(corr[k]);
 				}
@@ -272,15 +272,16 @@ void CPA(int msbox)
 	free(avg);
 	free(cut);
 	free(PT);
-	free(CT);
+	//free(CT);
 	free(data);
 }
 
 int main()
 {
-	puts(Progress);
-	for(int i = 0 ; i < 12000 ; i+=80) {
+	puts(Progress); /*
+	for(int i = 6200 ; i < 10400 ; i+=80) {
 		printf("RANGE : %0d ~ %0d\n", i , i+80);
 		CPA(i);
-	}
+	}*/
+	CPA();
 }

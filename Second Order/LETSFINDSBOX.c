@@ -3,15 +3,15 @@
 #include <string.h>
 #include <math.h>
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_NOZIP/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define startpt 12380
-#define endpt 12880
+#define startpt 0
+#define endpt 24000
 
 #define TraceLength 24000
-#define TraceNum 500
+#define TraceNum 2000
 
 typedef unsigned char u8;
 
@@ -103,15 +103,15 @@ int main()
 	double	maxCorr; 
 	double* corr;	
 	double	Sy;	  
-	double	Syy, *Sxx; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
-	double	*Sxy;		// 해밍 x 전력의 합
-	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
+	double	Syy, *Sxx; 
+	double	*Sxy;
+	double  *Sx; 
 	double	a, b, c;
-	float** data;  // 파동을 전체 저장할 데이터
+	float** data;  
 	int		key, maxkey;
-	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
-	int		i, j, k;	  // 반복문에 쓰이는 변수
-	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
+	int		x, y;
+	int		i, j, k;	  
+	char	buf[256];	 
 	double	cur, all;
 	int		maxvalue;
 	FILE	*rfp, * wfp;
@@ -144,7 +144,7 @@ int main()
 	for (i = 0; i < TraceNum; i++) {
 		fread(PT[i], sizeof(char), 16, rfp);
 	}
-
+/*
 	sprintf(buf, "%s%s", DIR, ctFN);
 	rfp = fopen(buf, "r");
 	if (rfp == NULL)
@@ -157,7 +157,7 @@ int main()
 	for (i = 0; i < TraceNum; i++) {
 		fread(CT[i], sizeof(char), 16, rfp);
 	}
-
+*/
 	corr = (double*)calloc(TraceLength, sizeof(double));
 	Sx = (double*)calloc(TraceLength, sizeof(double));
 	Sxx = (double*)calloc(TraceLength, sizeof(double));
@@ -175,12 +175,12 @@ int main()
 	{
 		maxCorr = 0;
 		maxkey = 0;
-		for (key = 0 ; key < 256; key++) {
+		//for (key = 0 ; key < 256; key++) {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { 
-				iv = S[0][PT[j][i] ^ key]; 
+				iv = PT[j][i] ^ 0x7b;
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
@@ -206,7 +206,6 @@ int main()
 					maxCorr = fabs(corr[j]);
 					maxvalue = j;
 				}
-
 			}
 			if(key == 255)
 			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] MAXVAL %d                          \n", i, maxkey, maxCorr, maxvalue);
@@ -221,8 +220,8 @@ int main()
 				printf("블록 쓰기 에러\n");
 			fwrite(corr, sizeof(double), TraceLength, wfp);
 			fclose(wfp);
-			
-		}
+			puts("");
+		//}
 		MK[i] = maxkey;
 	}
 	printf("\n\n");
