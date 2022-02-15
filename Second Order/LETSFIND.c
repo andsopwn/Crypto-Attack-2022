@@ -7,9 +7,8 @@
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define startpt 0
-#define endpt 24000
-
+#define startpt 9325
+#define endpt 12000
 #define TraceLength 24000
 #define TraceNum 2000
 
@@ -180,7 +179,11 @@ int main()
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { 
-				iv = PT[j][i] ^ 0x7b;
+				//iv = S[0][PT[j][i] ^ key];
+				if(i % 4 == 0) iv = PT[j][i];
+				else if(i % 4 == 1) iv = PT[j][i];
+				else if(i % 4 == 2) iv = PT[j][i];
+				else iv = PT[j][i];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
