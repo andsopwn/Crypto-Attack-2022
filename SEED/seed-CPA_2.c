@@ -232,7 +232,7 @@ int main() {
 			Sxx[j] += data[i][j] * data[i][j];
         }
 	}
-
+    bool carry = false;
 	for (int i = 0; i < 4 ; i++)
 	{
 		maxCorr = 0;
@@ -249,14 +249,8 @@ int main() {
                 iv = SS[3][iv];
                 else
                 iv = SS[0][iv];
-
-                //iv = (u8)(iv + val);
-                iv = (PT[j][i + 8] ^ key - iv);
-
-                if(i % 2 == 0)
-                iv = SS[2][iv];
-                else
-                iv = SS[1][iv];
+                
+                iv = (PT[j][i + 8] ^ key + iv);
 
 				hw_iv = 0;
 				for (k = 0 ; k < 8 ; k++) hw_iv += ((iv >> k) & 1);
@@ -266,7 +260,6 @@ int main() {
 				
 				for (k = startpt; k < endpt; k++)
 					Sxy[k] += hw_iv * data[j][k];
-
 			}
 
 			for (j = startpt; j < endpt; j++) { 

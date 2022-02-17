@@ -2,18 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_MASKED/"
+#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES_NOZIP/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
-#define ctFN "ciphertext.npy"
-#define G1_startpt 	11800
-#define G1_endpt 	11900
-//#define G2_startpt 	12380
-//#define G2_endpt 	12880
-#define G2_startpt 	12380
-#define G2_endpt 	12880
+//#define ctFN "ciphertext.npy"
+#define G1_startpt 	6520
+#define G1_endpt 	6600
+#define G2_startpt 	10690
+#define G2_endpt 	11110
 #define TraceLength 24000
-#define TraceNum 	500
+#define TraceNum 	2000
 
 #define Progress "-------------------------------------\nAES Second Order CPA Progressing...\n-------------------------------------"
 typedef unsigned char u8;
@@ -96,6 +94,7 @@ const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
+
 void CPA()
 {
 	float		**data		= NULL;
@@ -187,10 +186,10 @@ void CPA()
 	// 구간마다 전체 파형 데이터를 모음, 평균을 구하기 위해 전체 파형으로 나눔
 	for(i = 0 ; i < TraceLength ; i++) avg[i] = (float)(sum[i] / TraceNum);
 
-	sprintf(buf, "%snewtrace.bin", DIR);
-	wfp = fopen(buf, "wb");
-	if (wfp == NULL)
-		printf("newtrace.bin 쓰기 에러\n");
+	//sprintf(buf, "%snewtrace.bin", DIR);
+	//wfp = fopen(buf, "wb");
+	//if (wfp == NULL)
+	//	printf("newtrace.bin 쓰기 에러\n");
 	//fwrite(len, sizeof(int), 4, wfp);
 	for(i = 0 ; i < TraceNum ; i++)
 	{
@@ -203,8 +202,8 @@ void CPA()
 		m += G1_endpt - G1_startpt;
 	}
 	
-	fwrite(corr, sizeof(double), TraceLength, wfp);
-	fclose(wfp);
+	//fwrite(corr, sizeof(double), TraceLength, wfp);
+	//fclose(wfp);
 	
 //==============================================================//
 //						New data CPA							//
@@ -216,7 +215,7 @@ void CPA()
         }
     }
 	printf("NEW TRACE LEN : %d\n", len);
-	for(i = 0 ; i < 16 ; i++)
+	for(i = 0 ; i < 3 ; i++)
 	{	
 		maxCorr = 0;
 		maxkey = 0;
@@ -231,9 +230,7 @@ void CPA()
 				hw_iv = 0;
 
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
-
 				Sy += hw_iv; Syy += hw_iv * hw_iv;
-
 				for (k = 0 ; k < len ; k++) Sxy[k] += hw_iv * cut[j][k];
 			}
 			for (k = 0; k < len; k++) 
@@ -250,7 +247,6 @@ void CPA()
 			printf("\r%02dth Block CR[%lf] K1[%02X] | IM DOING : %02X", i, maxCorr, maxkey, key);
 			fflush(stdout);
 			}
-			
 			sprintf(buf, "%sct/%02dth.ct", DIR, i);
 			fflush(stdout);
 			wfp = fopen(buf, "wb");

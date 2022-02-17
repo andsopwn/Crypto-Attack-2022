@@ -7,10 +7,8 @@
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
-#define startpt 9325
-#define endpt 12000
 #define TraceLength 24000
-#define TraceNum 2000
+#define TraceNum 500
 
 typedef unsigned char u8;
 
@@ -93,8 +91,9 @@ static const u8    S[4][256] = {
     }
 };
 
-int main()
+void CPA()
 {
+	int startpt = 0, endpt = 24000;
 	u8**	PT = NULL;
 	u8**	CT = NULL;
 	u8		iv, hw_iv; 
@@ -174,16 +173,18 @@ int main()
 	{
 		maxCorr = 0;
 		maxkey = 0;
-		//for (key = 0 ; key < 256; key++) {
+		for (key = 0 ; key < 256; key++) {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
 			for (j = 0; j < TraceNum; j++) { 
-				//iv = S[0][PT[j][i] ^ key];
-				if(i % 4 == 0) iv = PT[j][i];
-				else if(i % 4 == 1) iv = PT[j][i];
-				else if(i % 4 == 2) iv = PT[j][i];
-				else iv = PT[j][i];
+				iv = S[0][PT[j][i] ^ key];
+				//iv = PT[j][i];
+				/*
+				if(i % 4 == 0) 		iv = PT[j][i] ^ 0x0E;
+				else if(i % 4 == 1) iv = PT[j][i] ^ 0x7A;
+				else if(i % 4 == 2) iv = PT[j][i] ^ 0xE8;
+				else 				iv = PT[j][i] ^ 0x7B; */
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
@@ -224,7 +225,7 @@ int main()
 			fwrite(corr, sizeof(double), TraceLength, wfp);
 			fclose(wfp);
 			puts("");
-		//}
+		}
 		MK[i] = maxkey;
 	}
 	printf("\n\n");
@@ -239,4 +240,377 @@ int main()
 	free(Sxx);
 	free(data);
 	free(corr);
+}
+
+void masked_POS()
+{
+	int max = 0, min = 24000;
+	u8**	PT = NULL;
+	u8**	CT = NULL;
+	u8		iv, hw_iv; 
+	u8		MK[16];	 
+	double	maxCorr; 
+	double* corr;	
+	double	Sy;	  
+	double	Syy, *Sxx; 
+	double	*Sxy;
+	double  *Sx; 
+	double	a, b, c;
+	float** data;  
+	int		x, y;
+	int		i, j, k;	  
+	char	buf[256];	 
+	double	cur, all;
+	int		maxvalue;
+	FILE	*rfp, * wfp;
+	int startpt = 0, endpt = 24000;
+
+	sprintf(buf, "%s%s", DIR, traceFN);
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
+	// DATA 동적 할당
+	data = (float**)calloc(TraceNum, sizeof(float*));
+	for (i = 0 ; i < TraceNum; i++)
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
+	
+	// DATA 
+	for (i = 0; i < TraceNum; i++) {
+		fread(data[i], sizeof(float), TraceLength, rfp);
+	}
+	fclose(rfp);
+
+	sprintf(buf, "%s%s", DIR, ptFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
+
+	PT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		PT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++) {
+		fread(PT[i], sizeof(char), 16, rfp);
+	}
+
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
+	{
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
+		}
+	}
+
+	for (int i = 0; i < 16 ; i++)
+	{
+		maxCorr = 0;
+		maxvalue = 0;
+		Sy = 0;
+		Syy = 0;
+		memset(Sxy, 0, sizeof(double)*TraceLength);
+		for (j = 0; j < TraceNum; j++) { 
+			if(i % 4 == 0) 		iv = PT[j][i] ^ 0x0E;
+			else if(i % 4 == 1) iv = PT[j][i] ^ 0x7A;
+			else if(i % 4 == 2) iv = PT[j][i] ^ 0xE8;
+			else 				iv = PT[j][i] ^ 0x7B;
+			hw_iv = 0;
+			for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+		
+			Sy += hw_iv;
+			Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+			
+			for (k = startpt; k < endpt; k++) {
+				Sxy[k] += hw_iv * data[j][k];
+			} 
+		}
+
+		for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+
+			a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+			b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+			c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+			//printf("%lf %lf %lf\n", a, b, c);
+
+			corr[j] = a / (b * c);
+			if (fabs(corr[j]) > maxCorr) {
+				if(fabs(corr[j]) < 0.6)
+					continue;
+				maxCorr = fabs(corr[j]);
+				maxvalue = j;
+			}
+		}
+		printf("%02dth Block CR[%lf] | POS[%d] \n", i, maxCorr, maxvalue);
+		fflush(stdout);
+		if(maxvalue == 0) continue;
+		if(maxvalue > max) max = maxvalue;
+		if(maxvalue < min) min = maxvalue;
+	}
+	printf("PLAINTEXT ^ KEY POS Range | %d ~ %d\n", min, max);
+
+	free(PT);
+	free(Sxy);
+	free(Sx);
+	free(Sxx);
+	free(data);
+	free(corr);
+}
+
+void pt_POS()
+{
+	int max = 0, min = 24000;
+	u8**	PT = NULL;
+	u8**	CT = NULL;
+	u8		iv, hw_iv; 
+	u8		MK[16];	 
+	double	maxCorr; 
+	double* corr;	
+	double	Sy;	  
+	double	Syy, *Sxx; 
+	double	*Sxy;
+	double  *Sx; 
+	double	a, b, c;
+	float** data;  
+	int		x, y;
+	int		i, j, k;	  
+	char	buf[256];	 
+	double	cur, all;
+	int		maxvalue;
+	FILE	*rfp, * wfp;
+	int startpt = 0, endpt = 24000;
+
+	sprintf(buf, "%s%s", DIR, traceFN);
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
+	// DATA 동적 할당
+	data = (float**)calloc(TraceNum, sizeof(float*));
+	for (i = 0 ; i < TraceNum; i++)
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
+	
+	// DATA 
+	for (i = 0; i < TraceNum; i++) {
+		fread(data[i], sizeof(float), TraceLength, rfp);
+	}
+	fclose(rfp);
+
+	sprintf(buf, "%s%s", DIR, ptFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
+
+	PT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		PT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++) {
+		fread(PT[i], sizeof(char), 16, rfp);
+	}
+
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
+	{
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
+		}
+	}
+
+	for (int i = 0; i < 16 ; i++)
+	{
+		maxCorr = 0;
+		maxvalue = 0;
+		Sy = 0;
+		Syy = 0;
+		memset(Sxy, 0, sizeof(double)*TraceLength);
+		for (j = 0; j < TraceNum; j++) { 
+			iv = PT[j][i];
+			//iv = PT[j][i];
+			/*
+			if(i % 4 == 0) 		iv = PT[j][i] ^ 0x0E;
+			else if(i % 4 == 1) iv = PT[j][i] ^ 0x7A;
+			else if(i % 4 == 2) iv = PT[j][i] ^ 0xE8;
+			else 				iv = PT[j][i] ^ 0x7B; */
+			hw_iv = 0;
+			for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+		
+			Sy += hw_iv;
+			Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+			
+			for (k = startpt; k < endpt; k++) {
+				Sxy[k] += hw_iv * data[j][k];
+			} 
+		}
+
+		for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+
+			a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+			b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+			c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+			//printf("%lf %lf %lf\n", a, b, c);
+
+			corr[j] = a / (b * c);
+			if (fabs(corr[j]) > maxCorr) {
+				maxCorr = fabs(corr[j]);
+				maxvalue = j;
+			}
+		}
+		//printf("%02dth Block CR[%lf] | POS[%d] \n", i, maxCorr, maxvalue);
+		//fflush(stdout);
+		if(maxvalue > max) max = maxvalue;
+		if(maxvalue < min) min = maxvalue;
+	}
+	printf("PLAINTEXT POS Range | %d ~ %d\n", min, max);
+
+	free(PT);
+	free(Sxy);
+	free(Sx);
+	free(Sxx);
+	free(data);
+	free(corr);
+}
+
+void sbox_POS()
+{
+	u8**	PT = NULL;
+	u8**	CT = NULL;
+	u8		iv, hw_iv; 
+	u8		MK[16];	 
+	double	maxCorr; 
+	double* corr;	
+	double	Sy;	  
+	double	Syy, *Sxx; 
+	double	*Sxy;
+	double  *Sx; 
+	double	a, b, c;
+	float** data;  
+	int		x, y;
+	int		i, j, k;	
+	int		key, maxkey;  
+	char	buf[256];	 
+	double	cur, all;
+	int		maxvalue;
+	int 	max = 0, min = 24000;
+	int startpt = 9000, endpt = 13000;
+	FILE	*rfp, * wfp;
+
+	sprintf(buf, "%s%s", DIR, traceFN);
+	rfp = fopen(buf, "rb");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", traceFN);
+	
+	// DATA 동적 할당
+	data = (float**)calloc(TraceNum, sizeof(float*));
+	for (i = 0 ; i < TraceNum; i++)
+		data[i] = (float*)calloc(TraceLength, sizeof(float));
+	
+	// DATA 
+	for (i = 0; i < TraceNum; i++) {
+		fread(data[i], sizeof(float), TraceLength, rfp);
+	}
+	fclose(rfp);
+
+	sprintf(buf, "%s%s", DIR, ptFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ptFN);
+
+	PT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		PT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++) {
+		fread(PT[i], sizeof(char), 16, rfp);
+	}
+
+	corr = (double*)calloc(TraceLength, sizeof(double));
+	Sx = (double*)calloc(TraceLength, sizeof(double));
+	Sxx = (double*)calloc(TraceLength, sizeof(double));
+	Sxy = (double*)calloc(TraceLength, sizeof(double));
+
+	for (i = 0; i < TraceNum; i++)
+	{
+		for (j = startpt; j < endpt; j++) {
+			Sx[j] += data[i][j];
+			Sxx[j] += data[i][j] * data[i][j];
+		}
+	}
+
+	for (int i = 0; i < 16 ; i++)
+	{
+		maxCorr = 0;
+		maxvalue = 0;
+		for(key = 0 ; key < 256 ; key++) {
+			Sy = 0;
+			Syy = 0;
+			memset(Sxy, 0, sizeof(double)*TraceLength);
+			for (j = 0; j < TraceNum; j++) { 
+				iv = S[0][PT[j][i] ^ key];
+				/*
+				if(i % 4 == 0) 		iv = PT[j][i] ^ 0x0E;
+				else if(i % 4 == 1) iv = PT[j][i] ^ 0x7A;
+				else if(i % 4 == 2) iv = PT[j][i] ^ 0xE8;
+				else 				iv = PT[j][i] ^ 0x7B; */
+				hw_iv = 0;
+				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
+			
+				Sy += hw_iv;
+				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+				
+				for (k = startpt; k < endpt; k++) {
+					Sxy[k] += hw_iv * data[j][k];
+				} 
+			}
+
+			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
+
+				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
+				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
+				c = sqrt((double)TraceNum * Syy - Sy * Sy);
+
+				//printf("%lf %lf %lf\n", a, b, c);
+
+				corr[j] = a / (b * c);
+				if (fabs(corr[j]) > maxCorr) {
+					maxkey = key;
+					maxCorr = fabs(corr[j]);
+					maxvalue = j;
+				}
+			}
+			if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf] MAXVAL %d                          \n", i, maxkey, maxCorr, maxvalue);
+			else {
+			printf("\r%02dth Block CR[%lf] K1[%02X] | IM DOING : %02X | %d", i, maxCorr, maxkey, key, maxvalue);
+			fflush(stdout);
+			}
+		}
+		if(maxvalue > max) max = maxvalue;
+		if(maxvalue < min) min = maxvalue;
+	}
+	printf("SBOX POS Range | %d ~ %d\n", min, max);
+
+	free(PT);
+	free(Sxy);
+	free(Sx);
+	free(Sxx);
+	free(data);
+	free(corr);
+}
+
+int main(){
+	//sbox_POS();
+	//pt_POS();
+	masked_POS();
 }
