@@ -180,7 +180,7 @@ void KeySC(u8 *MK, u32 *RK) {
         
         RK[(i - 1) * 2] = KL;
         RK[(i - 1) * 2 + 1] = KR;
-        printf("%02d KL : %08X, KR : %08X\n", i, KL, KR);
+        //printf("%02d KL : %08X, KR : %08X\n", i, KL, KR);
     }
 }
 

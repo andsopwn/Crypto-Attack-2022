@@ -143,33 +143,8 @@ static u32 SS[4][256] = {
 };
 
 int main() {
-    //printf("%02X ", 0x7c8f8c7e ^ 0xc737a22c);
-    u32 a = 0x08090a0b;
-    u32 b = 0xbbb82e52;
-    u32 c = 0xC3C1385D;
-    //printf("%08X = ", (a + b) & 0xffffffff);
-
-    u8 x[4] = { 0x08, 0x09, 0x0a, 0x0b };
-    u8 y[4] = { 0xbb, 0xb8, 0x2e, 0x52 };
-    u8 z[4] = { 0xc3, 0xc1, 0x38, 0x5d };
-    u8 e[4] = { 0x08, 0x09, 0x0a, 0x0b };
-    u8 f[4] = { 0x0c, 0x0d, 0x0e, 0x0f };
+    u32 a = 0x7c8f8c7e;
+    u32 b = 0xc737a22c;
     
-    int val;
-    for(int i = 0 ; i < 4; i++) {
-        val = e[i] ^ f[i] ^ y[i];
-        if(i % 2 == 0)
-        val = SS[3][val];
-        else
-        val = SS[0][val];
-        printf("%02X ", val);
-    }
-    /*
-    puts("\n");
-    a = 0x00000090;
-    b = 0x00000070;
-    u8 c = (a + b) & 0xff;
-    printf("%02X\n", c);
-    printf("%02X\n", (c - b) & 0xff);
-    */
+    printf("%08X", a ^ b);
 } 
