@@ -198,6 +198,7 @@ int main() {
 	u8**	PT = NULL;
 	//u8**	CT = NULL;
 	u8		iv, hw_iv; 
+    u8      iv0, iv1, iv2;
 	u8		MK[16] = { 0x00, };
 	u8   	ivv;
 	double	maxCorr; 
@@ -273,7 +274,6 @@ int main() {
 			Sxx[j] += data[i][j] * data[i][j];
         }
 	}
-
 	for (int i = 0; i < 4 ; i++)
 	{
 		maxCorr = 0;
@@ -291,16 +291,30 @@ int main() {
                 else
                 iv = S[0][iv];
 
+                iv0 = iv; // 첫번째 g 중간값
+
                 ivv = PT[j][i + 8] ^ key;
-                if((iv + ivv) > 0xff) carry = 1;
-                else carry = 0;
-                iv = (ivv + iv) & 0xff + carry;
+                if((iv + ivv + carry) > 0xff) { 
+                    carry = 0x01;
+                    iv = (u8)((u8)(ivv + iv) + carry); }
+                else 
+                    iv = (u8)(ivv + iv);
 
                 if(i % 2 == 0)
                 iv = S[1][iv];
                 else
                 iv = S[0][iv];
 
+                
+                /*
+                iv1 = iv; // 두번째 g 중간값
+
+                if((iv0 + iv1) > 0xff) carry = 1;
+                iv = (iv0 + iv1 + carry) & 0xff;
+                if(i % 2 == 0)
+                iv = S[1][iv];
+                else
+                iv = S[0][iv]; */
 
 				hw_iv = 0;
 				for (k = 0 ; k < 8 ; k++) hw_iv += ((iv >> k) & 1);

@@ -1,11 +1,5 @@
 #include <stdio.h>
 typedef unsigned char u8;
-typedef unsigned int u32;
-static u32 KC[16] = {
-    0x9e3779b9, 0x3c6ef373, 0x78dde6e6, 0xf1bbcdcc, 0xe3779b99, 0xc6ef3733, 0x8dde6e67, 0x1bbcdccf, 
-    0x3779b99e, 0x6ef3733c, 0xdde6e678, 0xbbcdccf1, 0x779b99e3, 0xef3733c6, 0xde6e678d, 0xbcdccf1b
-    };
-
 static u8 S[2][256] = {
 {
     0xa9, 0x85, 0xd6, 0xd3, 0x54, 0x1d, 0xac, 0x25, 0x5d, 0x43, 0x18, 0x1e, 0x51, 0xfc, 0xca, 0x63, 
@@ -45,7 +39,7 @@ static u8 S[2][256] = {
 }
 };
 
-static u8 INVS[2][256] = { 
+static u8 INVS[2][256] = {
 {
     0x5A, 0x2F, 0x80, 0x1A, 0x5C, 0xFA, 0x7C, 0xF6, 0x57, 0x6E, 0x6F, 0x2A, 0x84, 0x44, 0x66, 0xB8, 
     0x34, 0xA5, 0x4D, 0x1D, 0x75, 0x95, 0xF0, 0x17, 0x0A, 0x5B, 0x7B, 0xF9, 0x31, 0x05, 0x0B, 0x58, 
@@ -84,75 +78,22 @@ static u8 INVS[2][256] = {
 }
 };
 
-static u8 m0 = 0xfc;
-static u8 m1 = 0xf3;
-static u8 m2 = 0xcf;
-static u8 m3 = 0x3f;
-
-#define G_Function(X) (SS0[(X) & 0xff] ^ SS1[(X >> 8) & 0xff] ^ SS2[(X >> 16) & 0xff] ^ SS3[(X >> 24) & 0xff])
-/*
-u32 INV_G_Function(u32 A) {
-    
-} */
-
 int main() {
-    u32 KL = 0x7c8f8c7e;
-    u32 KR = 0xc737a22c;
-    u8 MK[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-    u32 A, B, C, D, Z0, Z1, Z2, Z3, Y0, Y1, Y2, Y3;
-    u32 TEMP;
-
-    //printf("%08X %08X\n", IKL, IKR);
-    Z0 = (u8)(KL);
-    Z1 = (u8)(KL >>  8);
-    Z2 = (u8)(KL >> 16);
-    Z3 = (u8)(KL >> 24);
-
-    Y0 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0xC0) ^ ((Z0 ^ Z1 ^ Z3) & 0x30) ^ ((Z0 ^ Z2 ^ Z3) & 0x0C) ^ ((Z1 ^ Z2 ^ Z3) & 0x03)];
-    Y1 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x03) ^ ((Z0 ^ Z1 ^ Z3) & 0xC0) ^ ((Z0 ^ Z2 ^ Z3) & 0x30) ^ ((Z1 ^ Z2 ^ Z3) & 0x0C)];
-    Y2 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0x0C) ^ ((Z0 ^ Z1 ^ Z3) & 0x03) ^ ((Z0 ^ Z2 ^ Z3) & 0xC0) ^ ((Z1 ^ Z2 ^ Z3) & 0x30)];
-    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
+    u8 INVS[2][256] = { 0x00, };
+    int index, value;
     
-    KL = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0; 
-
-    Z0 = (u8)(KR);
-    Z1 = (u8)(KR >>  8);
-    Z2 = (u8)(KR >> 16);
-    Z3 = (u8)(KR >> 24);
-
-    Y0 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0xC0) ^ ((Z0 ^ Z1 ^ Z3) & 0x30) ^ ((Z0 ^ Z2 ^ Z3) & 0x0C) ^ ((Z1 ^ Z2 ^ Z3) & 0x03)];
-    Y1 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x03) ^ ((Z0 ^ Z1 ^ Z3) & 0xC0) ^ ((Z0 ^ Z2 ^ Z3) & 0x30) ^ ((Z1 ^ Z2 ^ Z3) & 0x0C)];
-    Y2 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0x0C) ^ ((Z0 ^ Z1 ^ Z3) & 0x03) ^ ((Z0 ^ Z2 ^ Z3) & 0xC0) ^ ((Z1 ^ Z2 ^ Z3) & 0x30)];
-    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
-    
-    KR = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0;  
-
-    KL += KC[0];
-    KR -= KC[0];
-
-    printf("A BLOCK : %08X, C BLOCK : %08X\n", KL, KR);
+    for(int j = 0 ; j < 2 ; j++) {
+        for(int i = 0 ; i < 256 ; i++) {
+            value = S[j][i];
+            index = i;
+            INVS[j][value] = index;
+        }
+    }
+    for(int j = 0 ; j < 2 ; j++) {
+        printf("INVERSED SBOX #%d\n", j + 1);
+        for(int i = 0 ; i < 256 ; i++) {
+            printf("0x%02X, ", INVS[j][i]);
+            if(i % 16 == 15) puts("");
+        }
+    }
 }
-
-/* Origin G_BOX
-    Z3 = (S[0][(u8)(KL)] & m3) ^ (S[1][(u8)(KL >> 8)] & m0) ^ (S[0][(u8)(KL >> 16)] & m1) ^ (S[1][(u8)(KL >> 24)] & m2);
-    Z2 = (S[0][(u8)(KL)] & m2) ^ (S[1][(u8)(KL >> 8)] & m3) ^ (S[0][(u8)(KL >> 16)] & m0) ^ (S[1][(u8)(KL >> 24)] & m1);
-    Z1 = (S[0][(u8)(KL)] & m1) ^ (S[1][(u8)(KL >> 8)] & m2) ^ (S[0][(u8)(KL >> 16)] & m3) ^ (S[1][(u8)(KL >> 24)] & m0);
-    Z0 = (S[0][(u8)(KL)] & m0) ^ (S[1][(u8)(KL >> 8)] & m1) ^ (S[0][(u8)(KL >> 16)] & m2) ^ (S[1][(u8)(KL >> 24)] & m3);
-
-    Y0 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0xC0) ^ ((Z0 ^ Z1 ^ Z3) & 0x30) ^ ((Z0 ^ Z2 ^ Z3) & 0x0C) ^ ((Z1 ^ Z2 ^ Z3) & 0x03)];
-    Y1 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x03) ^ ((Z0 ^ Z1 ^ Z3) & 0xC0) ^ ((Z0 ^ Z2 ^ Z3) & 0x30) ^ ((Z1 ^ Z2 ^ Z3) & 0x0C)];
-    Y2 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0x0C) ^ ((Z0 ^ Z1 ^ Z3) & 0x03) ^ ((Z0 ^ Z2 ^ Z3) & 0xC0) ^ ((Z1 ^ Z2 ^ Z3) & 0x30)];
-    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
-    
-    KL = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0;
-
-    Z3 = (S[0][(u8)(KR)] & m3) ^ (S[1][(u8)(KR >> 8)] & m0) ^ (S[0][(u8)(KR >> 16)] & m1) ^ (S[1][(u8)(KR >> 24)] & m2);
-    Z2 = (S[0][(u8)(KR)] & m2) ^ (S[1][(u8)(KR >> 8)] & m3) ^ (S[0][(u8)(KR >> 16)] & m0) ^ (S[1][(u8)(KR >> 24)] & m1);
-    Z1 = (S[0][(u8)(KR)] & m1) ^ (S[1][(u8)(KR >> 8)] & m2) ^ (S[0][(u8)(KR >> 16)] & m3) ^ (S[1][(u8)(KR >> 24)] & m0);
-    Z0 = (S[0][(u8)(KR)] & m0) ^ (S[1][(u8)(KR >> 8)] & m1) ^ (S[0][(u8)(KR >> 16)] & m2) ^ (S[1][(u8)(KR >> 24)] & m3);
-   
-    Y0 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0xC0) ^ ((Z0 ^ Z1 ^ Z3) & 0x30) ^ ((Z0 ^ Z2 ^ Z3) & 0x0C) ^ ((Z1 ^ Z2 ^ Z3) & 0x03)];
-    Y1 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x03) ^ ((Z0 ^ Z1 ^ Z3) & 0xC0) ^ ((Z0 ^ Z2 ^ Z3) & 0x30) ^ ((Z1 ^ Z2 ^ Z3) & 0x0C)];
-    Y2 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0x0C) ^ ((Z0 ^ Z1 ^ Z3) & 0x03) ^ ((Z0 ^ Z2 ^ Z3) & 0xC0) ^ ((Z1 ^ Z2 ^ Z3) & 0x30)];
-    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
-*/
