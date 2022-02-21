@@ -203,15 +203,15 @@ int main() {
 	double	maxCorr; 
 	double* corr;	
 	double	Sy;	  
-	double	Syy, *Sxx; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
-	double	*Sxy;		// 해밍 x 전력의 합
-	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
+	double	Syy, *Sxx;
+	double	*Sxy;
+	double  *Sx; 
 	double	a, b, c;
-	float** data;  // 파동을 전체 저장할 데이터
+	float** data; 
 	int		key, maxkey;
-	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
-	int		i, j, k;	  // 반복문에 쓰이는 변수
-	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
+	int		x, y;
+	int		i, j, k;
+	char	buf[256];	 
 	double	cur, all;
 	FILE	*rfp, * wfp;
 

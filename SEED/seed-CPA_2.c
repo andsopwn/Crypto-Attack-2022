@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
+#define G_Function(X) (SS[0][(X) & 0xff] ^ SS[1][(X >> 8) & 0xff] ^ SS[2][(X >> 16) & 0xff] ^ SS[3][(X >> 24) & 0xff])
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/SEED/"
 #define traceFN "trace.bin"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
 #define startpt 0
-#define endpt 6200
+#define endpt 6500
 
 #define TraceLength 24000
 #define TraceNum 2000
@@ -204,20 +204,22 @@ int main() {
 	double	maxCorr; 
 	double* corr;	
 	double	Sy;	  
-	double	Syy, *Sxx; // 해밍웨이트 제곱들의 합, 전력량의 제곱들의 합
-	double	*Sxy;		// 해밍 x 전력의 합
-	double  *Sx; // 실제 전력값들의 합, 전력값들 제곱의 합
+	double	Syy, *Sxx;
+	double	*Sxy;
+	double  *Sx; 
 	double	a, b, c;
-	float** data;  // 파동을 전체 저장할 데이터
+	float** data;  
 	int		key, maxkey;
-	int		x, y;	      // plaintext 파일 가져올 때 쓰이는 변수
-	int		i, j, k;	  // 반복문에 쓰이는 변수
-	char	buf[256];	  // 파일 디렉토리를 덮어 쓸 임시값
+	int		x, y;
+	int		i, j, k;
+	char	buf[256];
 	double	cur, all;
     int     carry = 0;
 	FILE	*rfp, * wfp;
     u8  ATT[4] = { 0xbb, 0xb8, 0x2e, 0x52 };
-    u8  sum = 0x00;
+    u8  P0, P1, P2, P3;
+    u32 AT = { 0xbbb82e52 };
+    u32 NEW;
     u32 tmp = 0x00;
     
 
@@ -282,39 +284,31 @@ int main() {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
-			for (j = 0; j < TraceNum; j++) {
+			for (j = 0 ; j < TraceNum; j++) {
                 //iv = PT[j][i]; // 평문 cpa
-                //iv = PT[j][i] ^ key;  
-                iv = PT[j][i + 8] ^ PT[j][i + 12] ^ ATT[i];
-                if(i % 2 == 0)
-                iv = S[1][iv];
-                else
-                iv = S[0][iv];
+                //iv = PT[j][i] ^ key;
+                P0 = PT[j][ 8] ^ PT[j][12];
+                P1 = PT[j][ 9] ^ PT[j][13];  
+                P2 = PT[j][10] ^ PT[j][14];  
+                P3 = PT[j][11] ^ PT[j][15];  
 
-                iv0 = iv; // 첫번째 g 중간값
-
-                ivv = PT[j][i + 8] ^ key;
-                if((iv + ivv + carry) > 0xff) { 
-                    carry = 0x01;
-                    iv = (u8)((u8)(ivv + iv) + carry); }
-                else 
-                    iv = (u8)(ivv + iv);
-
-                if(i % 2 == 0)
-                iv = S[1][iv];
-                else
-                iv = S[0][iv];
-
+                NEW = ((P0 << 24) & 0xff000000 ^ (P1 << 16) & 0x00ff0000 ^ (P2 << 8) & 0x0000ff00 ^ P3 & 0x000000ff) ^ AT;
+                NEW = G_Function(NEW);
                 
-                /*
-                iv1 = iv; // 두번째 g 중간값
+                if(i == 0)      iv = (u8)(NEW >> 24);
+                else if(i == 1) iv = (u8)(NEW >> 16);
+                else if(i == 2) iv = (u8)(NEW >> 8);
+                else if(i == 3) iv = (u8)(NEW);
+                
+                ivv = PT[j][i + 8] ^ key;
+                if((iv + ivv + carry) > 0xff) carry = 1;
+                else carry = 0;
+                iv = (iv + ivv + carry);
 
-                if((iv0 + iv1) > 0xff) carry = 1;
-                iv = (iv0 + iv1 + carry) & 0xff;
                 if(i % 2 == 0)
                 iv = S[1][iv];
                 else
-                iv = S[0][iv]; */
+                iv = S[0][iv];
 
 				hw_iv = 0;
 				for (k = 0 ; k < 8 ; k++) hw_iv += ((iv >> k) & 1);
