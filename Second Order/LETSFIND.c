@@ -364,26 +364,26 @@ void masked_POS()
 
 void pt_POS()
 {
-	int max = 0, min = 24000;
-	u8**	PT = NULL;
-	u8**	CT = NULL;
-	u8		iv, hw_iv; 
-	u8		MK[16];	 
-	double	maxCorr; 
-	double* corr;	
-	double	Sy;	  
-	double	Syy, *Sxx; 
-	double	*Sxy;
-	double  *Sx; 
-	double	a, b, c;
-	float** data;  
-	int		x, y;
-	int		i, j, k;	  
-	char	buf[256];	 
-	double	cur, all;
-	int		maxvalue;
-	FILE	*rfp, * wfp;
+	u8**		PT = NULL;
+	u8**		CT = NULL;
+	u8			iv, hw_iv; 
+	u8			MK[16];	 
+	double		maxCorr; 
+	double* 	corr;	
+	double		Sy;	  
+	double		Syy, *Sxx; 
+	double		*Sxy;
+	double  	*Sx; 
+	double		a, b, c;
+	float** 	data;  
+	int			x, y;
+	int			i, j, k;	  
+	char		buf[256];	 
+	double		cur, all;
+	int			maxvalue;
+	FILE		*rfp, * wfp;
 	int startpt = 0, endpt = 24000;
+	int max = 0, min = 24000;
 
 	sprintf(buf, "%s%s", DIR, traceFN);
 	rfp = fopen(buf, "rb");

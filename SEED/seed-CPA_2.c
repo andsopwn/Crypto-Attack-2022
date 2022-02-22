@@ -214,12 +214,12 @@ int main() {
 	int		i, j, k;
 	char	buf[256];
 	double	cur, all;
-    int     carry = 0;
 	FILE	*rfp, * wfp;
     u8  ATT[4] = { 0xbb, 0xb8, 0x2e, 0x52 };
     u8  P0, P1, P2, P3;
     u32 AT = { 0xbbb82e52 };
     u32 NEW;
+    u32 carry = 0;
     u32 tmp = 0x00;
     
 
@@ -276,7 +276,7 @@ int main() {
 			Sxx[j] += data[i][j] * data[i][j];
         }
 	}
-	for (int i = 0; i < 4 ; i++)
+	for (int i = 3; i >= 0 ; i--)
 	{
 		maxCorr = 0;
 		maxkey = 0;
@@ -295,16 +295,24 @@ int main() {
                 NEW = ((P0 << 24) & 0xff000000 ^ (P1 << 16) & 0x00ff0000 ^ (P2 << 8) & 0x0000ff00 ^ P3 & 0x000000ff) ^ AT;
                 NEW = G_Function(NEW);
                 
-                if(i == 0)      iv = (u8)(NEW >> 24);
+                if(i == 0)      iv = (u8)(NEW >> 24); //  *
                 else if(i == 1) iv = (u8)(NEW >> 16);
                 else if(i == 2) iv = (u8)(NEW >> 8);
                 else if(i == 3) iv = (u8)(NEW);
-                
                 ivv = PT[j][i + 8] ^ key;
-                if((iv + ivv + carry) > 0xff) carry = 1;
-                else carry = 0;
-                iv = (iv + ivv + carry);
 
+                if(i == 3) {
+                    iv = (iv + ivv) & 0xff;
+                    carry = iv + ivv;
+                } else {
+                    if(carry > 0xff) {
+                        iv = (iv + ivv + 1) & 0xff;
+                        carry = iv + ivv + 1;
+                    } else {
+                        iv = (iv + ivv) & 0xff;
+                        carry = iv + ivv;
+                    }
+                }
                 if(i % 2 == 0)
                 iv = S[1][iv];
                 else
@@ -346,11 +354,7 @@ int main() {
         }
 		MK[i] = maxkey;
 	}
-	printf("\n\n");
-
-	printf("MASTER KEY : 0x");
-	for (int i = 0; i < 16; i++)	printf("%02X", MK[i]);
-	puts("");
+    puts("");
 
 	free(PT);
 	//free(CT);
