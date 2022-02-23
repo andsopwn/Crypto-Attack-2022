@@ -37,6 +37,7 @@ int main() {
 	FILE	*rfp, * wfp;
     u32 LK = 0x7c8f8c7e;
     u32 RK = 0xc737a22c;
+	u32 KK = 0x58ed0491;
     u32 CC, DD;
     u32 L0, L1, R0, R1;
     u8  P0, P1, P2, P3;
@@ -98,7 +99,7 @@ int main() {
 			Sxx[j] += data[i][j] * data[i][j];
         }
 	}
-	for (int i = 0; i < 4 ; i++)
+	for (int i = 3 ; i >= 0 ; i--)
 	{
 		maxCorr = 0;
 		maxkey = 0;
@@ -124,8 +125,6 @@ int main() {
                 DD = G_Function(DD);                
                 CC = (u32)(CC + DD);
                     // F FUNCTION EXIT
-                L0 = (PT[j][8] << 24) ^ (PT[j][9] << 16) ^ (PT[j][10] << 8) ^ PT[j][11];
-                L1 = (PT[j][12] << 24) ^ (PT[j][13] << 16) ^ (PT[j][14] << 8) ^ PT[j][15];
 
                 MT[ 8] = PT[j][0] ^ (u8)(CC >> 24);
                 MT[ 9] = PT[j][1] ^ (u8)(CC >> 16);
@@ -136,9 +135,39 @@ int main() {
                 MT[14] = PT[j][6] ^ (u8)(DD >>  8);
                 MT[15] = PT[j][7] ^ (u8)(DD);
 
-                iv = MT[i + 8] ^ MT[i + 12] ^ key;
 
-                if(i % 2 == 0)
+				DD = ((MT[8] ^ MT[12]) << 24) ^ ((MT[9] ^ MT[13]) << 16) ^ ((MT[10] ^ MT[14]) << 8) ^ (MT[11] ^ MT[15]) ^ KK;
+				DD = G_Function(DD);
+
+				if(i == 0) {
+					iv  = (u8)(CC >> 24);
+					ivv = (u8)(DD >> 24);
+				}	else if(i == 1) {
+					iv 	= (u8)(CC >> 16);
+					ivv = (u8)(DD >> 16);
+				}	else if(i == 2) {
+					iv 	= (u8)(CC >> 8);
+					ivv = (u8)(DD >> 8);
+				}	else if(i == 3) {
+					iv 	= (u8)(CC);
+					ivv = (u8)(DD);
+				}
+
+				iv = MT[i + 8] ^ key;
+
+				if(i == 3) {
+                    iv = (iv + ivv) & 0xff;
+                    carry = iv + ivv;
+                } else {
+                    if(carry > 0xff) {
+                        iv = (iv + ivv + 1) & 0xff;
+                        carry = iv + ivv + 1;
+                    } else {
+                        iv = (iv + ivv) & 0xff;
+                        carry = iv + ivv;
+                    }
+                }
+				if(i % 2 == 0)
                 iv = S[1][iv];
                 else
                 iv = S[0][iv];
@@ -171,7 +200,7 @@ int main() {
 			else    
 			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X] loc[%d]", i, ((double)key / 255) * 100, maxCorr, maxkey, loc);
 			if(key == maxkey) {
-				sprintf(buf, "%sct/%02dth_3.ct", DIR, i);
+				sprintf(buf, "%sct/%02dth_4.ct", DIR, i);
 				wfp = fopen(buf, "wb");
 				if (wfp == NULL)
 					printf("블록 쓰기 에러\n");
