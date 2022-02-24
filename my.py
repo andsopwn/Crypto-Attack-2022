@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup as bus
 from tkinter import *
 from tkinter import messagebox
+import ssl
 
 def connect():
     print("HELLO")
@@ -13,8 +14,10 @@ def no():
 
 def refresh():
     news.clear()
-    date.clear()
-    url = requests.get('https://sejong.korea.ac.kr/campuslife/notice/scholarship')
+    noticeURL = 'https://sejong.korea.ac.kr/campuslife/notice/scholarship'
+
+    url = requests.get(noticeURL, verify=False)
+
     data = bus(url.text, 'html.parser')
     content = data.find('div', {'class':'list02'}).find('ul').find_all('li')
     for i in range(5):
@@ -22,13 +25,8 @@ def refresh():
         #date_aa = content[i].find_all('dd')
         #date_aa = date_aa[1]
         #date.append(date_aa.text.strip())
-        
 news = []
-date = []
-
 refresh()
-#print(news[0])
-#print(date[0])
 
 window = Tk()
     
@@ -50,5 +48,4 @@ b2.flash()
 b1.pack()
 b2.pack()
 window.mainloop()
-
 

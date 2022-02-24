@@ -2,12 +2,24 @@
 #include "seed.h"
 
 int main() {
+    u32 KL1O = 0xC119F584;
+    u32 KR1O = 0x5AE033A0;
+    u32 KL2O = 0x62947390;
+    u32 KR2O = 0xA600AD14;
     u32 KL1 = 0xC119F584;
     u32 KR1 = 0x5AE033A0;
     u32 KL2 = 0x62947390;
     u32 KR2 = 0xA600AD14;
-    u32 A, B, C, D, Z0, Z1, Z2, Z3, Y0, Y1, Y2, Y3;
+/*
+    u32 KL1 = 0x47f4fec5;
+    u32 KR1 = 0x353ae1ba;
+    u32 KL2 = 0xfeccea48;
+    u32 KR2 = 0xa4ef9f9b;
+*/
+    u32 Z0, Z1, Z2, Z3, Y0, Y1, Y2, Y3;
+    u32 A = 0, B = 0;
     u32 TEMP;
+// =================================================================== // 1 ROUND
 
     Z0 = (u8)(KL1);
     Z1 = (u8)(KL1 >>  8);
@@ -20,6 +32,7 @@ int main() {
     Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
     
     KL1 = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0;
+    KL1 += KC[0];
 
     Z0 = (u8)(KR1);
     Z1 = (u8)(KR1 >>  8);
@@ -32,7 +45,6 @@ int main() {
     Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
     
     KR1 = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0;  
-    KL1 += KC[0];
     KR1 -= KC[0];
 
 // =================================================================== // 2 ROUND
@@ -45,9 +57,10 @@ int main() {
     Y0 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0xC0) ^ ((Z0 ^ Z1 ^ Z3) & 0x30) ^ ((Z0 ^ Z2 ^ Z3) & 0x0C) ^ ((Z1 ^ Z2 ^ Z3) & 0x03)];
     Y1 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x03) ^ ((Z0 ^ Z1 ^ Z3) & 0xC0) ^ ((Z0 ^ Z2 ^ Z3) & 0x30) ^ ((Z1 ^ Z2 ^ Z3) & 0x0C)];
     Y2 = INVS[0][((Z0 ^ Z1 ^ Z2) & 0x0C) ^ ((Z0 ^ Z1 ^ Z3) & 0x03) ^ ((Z0 ^ Z2 ^ Z3) & 0xC0) ^ ((Z1 ^ Z2 ^ Z3) & 0x30)];
-    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
+    Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];  
     
     KL2 = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0; 
+    KL2 += KC[1];
 
     Z0 = (u8)(KR2);
     Z1 = (u8)(KR2 >>  8);
@@ -60,12 +73,20 @@ int main() {
     Y3 = INVS[1][((Z0 ^ Z1 ^ Z2) & 0x30) ^ ((Z0 ^ Z1 ^ Z3) & 0x0C) ^ ((Z0 ^ Z2 ^ Z3) & 0x03) ^ ((Z1 ^ Z2 ^ Z3) & 0xC0)];
     
     KR2 = (Y3 << 24) ^ (Y2 << 16) ^ (Y1 << 8) ^ (u8)Y0;  
-    
-    KL2 += KC[1];
     KR2 -= KC[1];
-
-    printf("A + C : %08X, B + D : %08X\n", KL1, KR1);
-    //printf("A BLOCK : %08X, C BLOCK : %08X\nB BLOCK : %08X, D BLOCK : %08X\n", KL1, KR1, KL2, KR2);
+    // REAL A : 1 + 2 + 4
+    // 1 : A + C | KL1
+    // 2 : B - D | KR1
+    // 3 : A' + C | KL2
+    // 4 : B' - D | KR2
+    while(1) {
+        printf("\r%08X", A);
+        A++;
+        if(((KL1 + KR2) & 0x00ffffff) == ((KR1 + KL2) & 0x00ffffff)) {
+            printf("\n%08X\n", A);
+            break;
+        }
+    }
 }
 
 /* Origin G_BOX
