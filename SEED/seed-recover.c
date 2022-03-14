@@ -17,8 +17,7 @@ int main() {
     u32 KR2 = 0xa4ef9f9b;
 */
     u32 Z0, Z1, Z2, Z3, Y0, Y1, Y2, Y3;
-    u32 A = 0, B = 0;
-    u32 TEMP;
+    u32 T0, T1;
 // =================================================================== // 1 ROUND
 
     Z0 = (u8)(KL1);
@@ -79,14 +78,10 @@ int main() {
     // 2 : B - D | KR1
     // 3 : A' + C | KL2
     // 4 : B' - D | KR2
-    while(1) {
-        printf("\r%08X", A);
-        A++;
-        if(((KL1 + KR2) & 0x00ffffff) == ((KR1 + KL2) & 0x00ffffff)) {
-            printf("\n%08X\n", A);
-            break;
-        }
-    }
+    printf("%08X %08X %08X %08X\n", KL1, KR1, KL2, KR2);
+    T0 = KL1 + KL2; // A - A'
+    T1 = T0 >> 8;
+    printf("%08X %08X\n", T0, T1);
 }
 
 /* Origin G_BOX
