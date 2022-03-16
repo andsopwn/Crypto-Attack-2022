@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 def cov(x, y):
     return np.cov(x, y)[0][1]
@@ -40,7 +41,9 @@ masterKey  = (0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 
 #plt.show()
 
 # 첫 번째 바이트 기준 trace 5000개만큼 sbox에 넣은 값 생성
-tempSbox = [sbox[plainText[i][0] ^ masterKey[0]] for i in range(len(plainText))] 
+pt_Index = 15
+tempSbox = [sbox[plainText[i][pt_Index] ^ masterKey[pt_Index]] for i in range(len(plainText))] 
+
 # 해밍 웨이트로 변환한 값들을 tempHW에 저장
 tempHW   = [hw[s] for s in tempSbox]
 #print(tempHW)
@@ -72,9 +75,9 @@ for i in range(9):
     for j in range(i):
         tempSumDiff += np.abs(tempMeans[i] - tempMeans[j])
         
-plt.plot(tempSumDiff)
-plt.grid()
-plt.show()
+#plt.plot(tempSumDiff)
+#plt.grid()
+#plt.show()
 
 # 5: Find POIs
 POIs = []
@@ -83,14 +86,14 @@ POIspacing = 5
 for i in range(numPOIs):
     # Find the max
     nextPOI = tempSumDiff.argmax()
+    np.save('/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/template/POI_{}'.format(i), nextPOI)
     POIs.append(nextPOI)
-    
     # Make sure we don't pick a nearby value
     poiMin = max(0, nextPOI - POIspacing)
     poiMax = min(nextPOI + POIspacing, len(tempSumDiff))
     for j in range(poiMin, poiMax):
         tempSumDiff[j] = 0
-        
+ 
 print(POIs)
 
 # 6: Fill up mean and covariance matrix for each HW
@@ -104,21 +107,17 @@ for HW in range(9):
             x = tempTracesHW[HW][:,POIs[i]]
             y = tempTracesHW[HW][:,POIs[j]]
             covMatrix[HW,i,j] = cov(x, y)
-
+            
 #print(meanMatrix)
 #print(covMatrix[0])
 
 # 템플릿 준비된 과정
 # 1: Load attack traces
-'''
-atkTraces = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/2022.03.12-04.08.12_traces.npy')
-atkPText  = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/2022.03.12-04.08.12_textin.npy')
-atkKey    = (0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0)
+atkTraces = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/attack_trace/2022.03.15-08.41.50_traces.npy')
+atkPText  = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/attack_trace/2022.03.15-08.41.50_textin.npy')
 
 #print(atkTraces)
 #print(atkPText)
-print(atkKey)
-
 
 # 2 공격 지점
 P_k = np.zeros(256)
@@ -140,4 +139,4 @@ for j in range(len(atkTraces)):
 
     # Print our top 5 results so far
     # Best match on the right
-    print(P_k.argsort()[-5:])'''
+    print(P_k.argsort()[-1:])

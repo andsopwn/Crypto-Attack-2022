@@ -1,2 +1,2 @@
-a = "Python is very fun"
-print(a.replace('very', 'vrey'))
+import tensorflow as tf
+
