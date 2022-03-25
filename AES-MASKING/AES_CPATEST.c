@@ -5,10 +5,10 @@
 
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/"
 #define traceFN "trace.bin"
-#define ptFN "2022.03.12-04.08.12_textin.npy"
+#define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
 #define startpt 0
-#define endpt 13000
+#define endpt 24000
 
 #define TraceLength 24000
 #define TraceNum 5000

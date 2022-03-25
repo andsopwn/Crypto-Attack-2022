@@ -22,7 +22,7 @@ sbox = (
     0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
     0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
     0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 ) 
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 )
 # SBOX을 해밍웨이트로 미리 변환
 hw = [bin(x).count("1") for x in range(256)]
 # https://wiki.newae.com/V4:Tutorial_B6_Breaking_AES_(Manual_CPA_Attack)
@@ -104,35 +104,4 @@ for HW in range(9):
             x = tempTracesHW[HW][:,POIs[i]]
             y = tempTracesHW[HW][:,POIs[j]]
             covMatrix[HW,i,j] = cov(x, y)
-
-#print(meanMatrix)
-#print(covMatrix[0])
-# 템플릿 준비된 과정
-# 1: Load attack traces
-atkTraces = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/attack_trace/2022.03.15-08.41.50_traces.npy')
-atkPText  = np.load(r'/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/attack_trace/2022.03.15-08.41.50_textin.npy')     
-
-#print(atkTraces)
-#print(atkPText)
-
-# 2 공격 지점
-P_k = np.zeros(256)
-for j in range(len(atkTraces)):
-    # Grab key points and put them in a small matrix
-    a = [atkTraces[j][POIs[i]] for i in range(len(POIs))]
-    
-    # Test each key
-    for k in range(256):
-        # Find HW coming out of sbox
-        HW = hw[sbox[atkPText[j][0] ^ k]]
-    
-        # Find p_{k,j}
-        rv = multivariate_normal(meanMatrix[HW], covMatrix[HW])
-        p_kj = rv.pdf(a) # 확률밀도함수
-   
-        # Add it to running total
-        P_k[k] += np.log(p_kj)
-
-    # Print our top 5 results so far
-    # Best match on the right
-    print(P_k.argsort()[-5:])
+            
