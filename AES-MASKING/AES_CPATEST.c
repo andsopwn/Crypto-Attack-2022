@@ -4,11 +4,11 @@
 #include <math.h>
 
 #define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/AES/"
-#define traceFN "trace.bin"
+#define traceFN "trace.npy"
 #define ptFN "plaintext.npy"
 #define ctFN "ciphertext.npy"
 #define startpt 0
-#define endpt 24000
+#define endpt 2000
 
 #define TraceLength 24000
 #define TraceNum 5000
@@ -107,7 +107,7 @@ int main()
 	double		*Sxy;
 	double  	*Sx;
 	double		a, b, c;
-	float** 	data;
+	double** 	data;
 	int			key, maxkey;
 	int			x, y;     
 	int			i, j, k;
@@ -121,12 +121,12 @@ int main()
 		printf("%s 파일 읽기 오류", traceFN);
 	
 
-	data = (float**)calloc(TraceNum, sizeof(float*));
+	data = (double**)calloc(TraceNum, sizeof(double*));
 	for (i = 0 ; i < TraceNum; i++)
-		data[i] = (float*)calloc(TraceLength, sizeof(float));
+		data[i] = (double*)calloc(TraceLength, sizeof(double));
 	
 	for (i = 0; i < TraceNum; i++)
-		fread(data[i], sizeof(float), TraceLength, rfp);
+		fread(data[i], sizeof(double), TraceLength, rfp);
 	fclose(rfp);
 
 	sprintf(buf, "%s%s", DIR, ptFN);
@@ -205,7 +205,7 @@ int main()
 			else    
 			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X]", i, ((double)key / 255) * 100, maxCorr, maxkey);
 			if(key == maxkey) {
-				sprintf(buf, "%sct/%02dth_4.ct", DIR, i);
+				sprintf(buf, "%sct/%02dth.ct", DIR, i);
 				wfp = fopen(buf, "wb");
 				if (wfp == NULL)
 					printf("블록 쓰기 에러\n");

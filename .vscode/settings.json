@@ -3,6 +3,7 @@
         "__locale": "c",
         "ios": "c",
         "kisa_seed_ecb.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "locale": "c"
     }
 }
