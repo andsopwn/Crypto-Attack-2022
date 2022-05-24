@@ -7,7 +7,7 @@
 #define     OUTPUT  2   // 출력층 노드 개수
 
 float sigmoid(float h) { return (1 / (1 + exp((-1)*h))); }
-float tanh(float h)    { return (2 / (1 + exp(-2 * h)) - 1); }
+//float tanh(float h)    { return (2 / (1 + exp(-2 * h)) - 1); }
 float relu(float h)    { return (h > 0 ? h : 0); }
 
 int main() {

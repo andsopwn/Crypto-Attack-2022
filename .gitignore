@@ -1,0 +1,23 @@
+# 실행 파일 제외
+*.dll
+*.exe
+*.o
+*.so
+*.com
+*.class
+
+
+# 패키지 파일 제외
+*.dmg
+*.iso
+*.tar
+*.zip
+*.gz
+
+# vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+src/lib_src/JSON/writeJSON
