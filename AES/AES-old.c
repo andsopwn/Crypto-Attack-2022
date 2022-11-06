@@ -1,27 +1,3 @@
-/*
-    This file is part of the ChipWhisperer Example Targets
-    Copyright (C) 2012-2017 NewAE Technology Inc.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#include "hal.h"
-#include <stdint.h>
-#include <stdlib.h>
-
-#include "simpleserial.h"
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,18 +19,6 @@ typedef unsigned int u32;
     | ((u32)Sbox[(u8)((x >> 8) & 0xFF)] << 8) \
     | ((u32)Sbox[(u8)(x & 0xff)]) \
 
-void prt(u8 CT[16])
-{   
-    printf("\n");
-    for(int i = 0 ; i < 4 ; i++)
-    {
-    for(int k = 0 ; k < 4 ; k++)
-    printf("%02X ", CT[k * 4 + i]);
-    printf("\n"); 
-    }
-    printf("\n");
-}
-
 u8 Sbox[256] = {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -71,7 +35,7 @@ u8 Sbox[256] = {
     0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
     0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
     0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
     };
 
 u8 RSbox[256] = {
@@ -90,7 +54,7 @@ u8 RSbox[256] = {
     0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
     0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
     0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
-    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d 
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     };
 
 u32 u4byte_in(u8 *x)
@@ -110,7 +74,7 @@ void AES_KeyWordToByte(u32 W[], u8 RK[])
 {
     int i;
     for(i = 0 ; i < 44 ; i++)
-    u4byte_out(RK + 4 * i, W[i]); 
+    u4byte_out(RK + 4 * i, W[i]);
 }
 
 u32 Rcons[10] = { 0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000, 0x20000000, 0x40000000, 0x80000000, 0x1b000000, 0x36000000 };
@@ -209,7 +173,7 @@ void Mixcolumns(u8 S[16])
 {
     u8 temp[16];
 
-    for(int i = 0 ; i < 16; i += 4) 
+    for(int i = 0 ; i < 16; i += 4)
     {
         temp[i] = MUL2(S[i]) ^ MUL3(S[i+1]) ^ S[i+2] ^ S[i+3];
         temp[i+1] = S[i] ^ MUL2(S[i+1]) ^ MUL3(S[i+2]) ^ S[i+3];
@@ -233,7 +197,7 @@ void AES_ENC(u8 PT[16], u8 RK[16], u8 CT[16], int keysize)
     AddRoundKey(CT, RK);
 
     for(int i = 0 ; i < Nr - 1 ; i++)
-    {   
+    {
         SubBytes(CT);
         Shiftrows(CT);
         Mixcolumns(CT);
@@ -253,7 +217,7 @@ void AES_DEC(u8 PT[16], u8 RK[16], u8 CT[16], int keysize)
 
     AddRoundKey(CT, RK + 16 * 10);
     for(int i = 0 ; i < Nr - 1 ; i++)
-    {   
+    {
         InvShiftrows(CT);
         InvSubBytes(CT);
         AddRoundKey(CT, RK + (16 * 9) - 16 * i);
@@ -264,79 +228,17 @@ void AES_DEC(u8 PT[16], u8 RK[16], u8 CT[16], int keysize)
     AddRoundKey(CT, RK + 0);
 }
 
-void pprt(u8 A[])
+int main()
 {
-    printf("AFTER Text : ");
-    for(int i = 0 ; i < 16 ; i++)
-    printf("%02X", A[i]);
-    printf("\n");
-}
-
-uint8_t get_key(uint8_t* k, uint8_t len)
-{
-	// Load key here
-	return 0x00;
-}
-
-#if SS_VER == SS_VER_2_0
-uint8_t get_pt(uint8_t cmd, uint8_t scmd, uint8_t len, uint8_t* pt)
-#else
-uint8_t get_pt(uint8_t* pt, uint8_t len)
-#endif
-
-{
+    int i;
     u8 MK[16] = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0 };
     u8 CT[16] = { 0x00, };
-    u8 RE[16] = { 0x00, };
     u8 RK[240] = { 0x00, };
+    u8 PT[16] = {0x00, };
     int keysize = 128;
-	/**********************************
-	* Start user-specific code here. */
-	trigger_high();
 
-	//16 hex bytes held in 'pt' were sent
-	//from the computer. Store your response
-	//back into 'pt', which will send 16 bytes
-	//back to computer. Can ignore of course if
-	//not needed
+
     AES_KeySchedule(MK, RK, keysize);
-    AES_ENC(pt, RK, CT, keysize);
-	trigger_low();
-	/* End user-specific code here. *
-	********************************/
-	simpleserial_put('r', 16, pt);
-	return 0x00;
-}
+    AES_ENC(PT, RK, CT, keysize);
 
-uint8_t reset(uint8_t* x, uint8_t len)
-{
-	// Reset key here if needed
-	return 0x00;
-}
-
-
-int main(void)
-{
-    platform_init();
-	init_uart();
-	trigger_setup();
-
- 	/* Uncomment this to get a HELLO message for debug */
-	/*
-	putch('h');
-	putch('e');
-	putch('l');
-	putch('l');
-	putch('o');
-	putch('\n');
-	*/
-
-	simpleserial_init();
-	simpleserial_addcmd('p', 16, get_pt);
-#if SS_VER != SS_VER_2_0
-	simpleserial_addcmd('k', 16, get_key);
-	simpleserial_addcmd('x', 0, reset);
-#endif
-	while(1)
-		simpleserial_get();
 }
