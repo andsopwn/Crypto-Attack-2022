@@ -236,7 +236,7 @@ void AES_DEC_CTR(char* inst, char* outst, u32 *W) {
 
    fseek(RFP, 0, SEEK_SET); 
    encryptedFile = calloc(fileSize, sizeof(u8)); 
-   
+
    fread(encryptedFile, 1, fileSize, RFP);
    fclose(RFP);
 
@@ -252,10 +252,7 @@ void AES_DEC_CTR(char* inst, char* outst, u32 *W) {
 
    if((WFP = fopen(outst, "wb")) == NULL) { puts("파일 스트림 쓰기 에러"); return; }
    // IV 생성 (비표 = 0 | 블록번호 기입)
-
-   for(int i = 0 ; i < Block ; i++)
-      printf("%02X ", encryptedFile[i]);
-
+   //for(int i = 0 ; i < Block ; i++) printf("%02X ", encryptedFile[i]);
    for(int i = 0 ; i < Block ; i++) {
       IV[i][15] = i & 0xff;
       IV[i][14] = (i >> 8) & 0xff;
@@ -265,11 +262,19 @@ void AES_DEC_CTR(char* inst, char* outst, u32 *W) {
       AES_ENC_Optimization(IV[i], CT[i], W, 128);
       for(int j = 0 ; j < 16 ; j++) 
          CT[i][j] ^= encryptedFile[i * 16 + j];
-
-      fwrite(CT[i], sizeof(u8), 16, WFP);
    }
-   for(int i = 0 ; i < 16 ; i++) printf("%02X ", CT[0][i]);
+   // 패딩 검증 및 파일 출력
+   Padding = CT[Block - 1][15]; // 임의로 맨 마지막 한 바이트를 패딩으로 설정한다
+   for(int i = 0 ; i < Block ; i++) { // 가장 마지막 패딩이 0x10보다 작을 경우에만 패딩 제거를 한다.
+      if(i + 1 == Block && Padding <= 0x10) { 
+         fwrite(CT[Block - 1], sizeof(char), (16 - Padding) % 16, WFP); // 패딩 값은 무슨 일이 있어도 0~16 사이
+         printf("PKCS#7 패딩이 제거됨   -> %d개의 %02X 값\n", Padding, Padding); 
+      }
+      else fwrite(CT[i], sizeof(char), 16, WFP);   // 일반적인 상황 (패딩이 없는 STATE)
+   }
+   printf("맨 처음 복호화된 State -> "); for(int i = 0 ; i < 16 ; i++) printf("%02X ", CT[0][i]);
    fclose(WFP);
+
    printf("[%d Blocks]\n", Block);
    for(int i = 0 ; i < Block ; i++) { free(IV[i]); free(CT[i]); }
    free(IV);
@@ -317,16 +322,13 @@ void AES_KeySchedule_Optimization(u8 *MK, int keysize) {
    //if(keysize == 256) RoundKeyGeneration256_Optimization(MK, RK);
 }
 
-void timing_test(u8 *IN, u8 *OUT, u8 *MK, u32 keysize) {
-
-}
 int main(int argc, char* argv[]) {
    
-   //u8       MK[32]      = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
-   u8      MK[32] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
-   u8      PT[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
-   u8      CT[16] = { 0x00, };
-   u8      DE[16] = { 0x00, };
+   u8       MK[32]      = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+   //u8      MK[32] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+   u8       PT[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 };
+   u8       CT[16] = { 0x00, };
+   u8       DE[16] = { 0x00, };
    const u8      CT_REF[16] = { 0x84, 0xD4, 0xC9, 0xC0, 0x8B, 0x4F, 0x48, 0x28, 0x61, 0xE3, 0xA9, 0xC6, 0xC3, 0x5B, 0xC4, 0xD9 };
    int      keysize     = 128;
    clock_t  start, finish;
@@ -361,7 +363,7 @@ int main(int argc, char* argv[]) {
    printf("연산 소요 시간 - %lf초", (double)(finish - start) / CLOCKS_PER_SEC);
    puts("\n");
    */
-
+   
    if(argc != 4) { puts("Usage : ./Dec {Encrypted File} {New FileName} {Mode}"); return 0; }
    AES_KeySchedule_Optimization(MK, keysize);
 
@@ -384,5 +386,6 @@ int main(int argc, char* argv[]) {
 
    printf("원본 파일\t%s\n해독 파일\t%s\n운영 모드\t%s\n연산 시간\t%f초\n", argv[1], argv[2], argv[3], (double)(finish - start) / CLOCKS_PER_SEC);
    
+
    return 0;
 }
