@@ -220,66 +220,55 @@ void AES_DEC_Optimization(u8 *PT, u8 *CT, u32 *W, int keysize) {
    u4byte_out(PT + 12, S3);
 }
 
-void AES_DEC_CTR(char* inst, char* outst, u32 *W) {  
+clock_t AES_DEC_CTR(char* inst, char* outst, u32 *W) {  
    // CTR 복호화이므로 암호화 과정에 패딩이 되어있다고 가정하고 복호화에서는 패딩 제거만 구현했습니다.
    u32      fileSize;         // 파일의 크기를 담을 변수입니다.
-   u32      Block       = 0;  // 파일의 크기에 따라 블록의 개수를 담을 변수입니다.
+   u8       CTR[16]     = { 0x00, };   // Counter Array
    u8       Padding     = 0;  // 패딩 값입니다.
    u8       *encryptedFile;   // 파일의 바이너리 값을 올리기 위한 변수입니다.
-   u8       **IV, **CT;       // IV는 CTR모드의 Counter State, CT는 IV의 암호화 값
+   u8       *decryptedFile;   // 복호화된 파일 
    FILE     *RFP, * WFP;      // RFP - read, WFP - Write 파일 입출력
+   clock_t  start = 0, finish = 0;
+   u32      time = 0;
 
-   if((RFP = fopen(inst, "rb")) == NULL) { puts("파일 스트림 읽기 에러"); return; }
+   if((RFP = fopen(inst, "rb")) == NULL) { puts("파일 스트림 읽기 에러"); return 0; }
 
    fseek(RFP, 0, SEEK_END);   // 파일크기 읽기
-   fileSize = ftell(RFP);      // 
+   fileSize = ftell(RFP);     //
 
    fseek(RFP, 0, SEEK_SET); 
    encryptedFile = calloc(fileSize, sizeof(u8)); 
+   decryptedFile = calloc(fileSize, sizeof(u8)); 
 
    fread(encryptedFile, 1, fileSize, RFP);
    fclose(RFP);
 
-   Block = (int)(fileSize / 16);
-
-   IV = (u8**)calloc(Block, sizeof(u8*));
-	for(int i = 0; i < Block ; i++)
-		IV[i] = (u8*)calloc(16, sizeof(u8));
-
-   CT = (u8**)calloc(Block, sizeof(u8*));
-	for(int i = 0; i < Block ; i++)
-		CT[i] = (u8*)calloc(16, sizeof(u8));
-
-   if((WFP = fopen(outst, "wb")) == NULL) { puts("파일 스트림 쓰기 에러"); return; }
+   if((WFP = fopen(outst, "wb")) == NULL) { puts("파일 스트림 쓰기 에러"); return 0; }
    // IV 생성 (비표 = 0 | 블록번호 기입)
    //for(int i = 0 ; i < Block ; i++) printf("%02X ", encryptedFile[i]);
-   for(int i = 0 ; i < Block ; i++) {
-      IV[i][15] = i & 0xff;
-      IV[i][14] = (i >> 8) & 0xff;
-      IV[i][13] = (i >> 16) & 0xff;
-      IV[i][12] = (i >> 24) & 0xff;
-      
-      AES_ENC_Optimization(IV[i], CT[i], W, 128);
+   for(int i = 0 ; i < (int)(fileSize / 16) ; i++) {
+      CTR[15] = i & 0xff;
+      CTR[14] = (i >> 8) & 0xff;
+      CTR[13] = (i >> 16) & 0xff;
+      CTR[12] = (i >> 24) & 0xff;
+      start = clock();
+      AES_ENC_Optimization(CTR, decryptedFile + i * 16, W, 128);
+      finish = clock();
+      time += (double)(finish - start);
       for(int j = 0 ; j < 16 ; j++) 
-         CT[i][j] ^= encryptedFile[i * 16 + j];
+         decryptedFile[i * 16 + j] ^= encryptedFile[i * 16 + j];
    }
    // 패딩 검증 및 파일 출력
-   Padding = CT[Block - 1][15]; // 임의로 맨 마지막 한 바이트를 패딩으로 설정한다
-   for(int i = 0 ; i < Block ; i++) { // 가장 마지막 패딩이 0x10보다 작을 경우에만 패딩 제거를 한다.
-      if(i + 1 == Block && Padding <= 0x10) { 
-         fwrite(CT[Block - 1], sizeof(char), (16 - Padding) % 16, WFP); // 패딩 값은 무슨 일이 있어도 0~16 사이
-         printf("PKCS#7 패딩이 제거됨   -> %d개의 %02X 값\n", Padding, Padding); 
-      }
-      else fwrite(CT[i], sizeof(char), 16, WFP);   // 일반적인 상황 (패딩이 없는 STATE)
-   }
-   printf("맨 처음 복호화된 State -> "); for(int i = 0 ; i < 16 ; i++) printf("%02X ", CT[0][i]);
+   Padding = decryptedFile[fileSize - 1]; // 임의로 맨 마지막 한 바이트를 패딩으로 설정한다
+   if(Padding > 0x10)   Padding = 0;      // 패딩 예외처리
+   fwrite(decryptedFile, sizeof(u8), fileSize - decryptedFile[fileSize - 1], WFP); // 파일 사이즈에서 패딩 값 뺸 만큼 파일출력
    fclose(WFP);
 
-   printf("[%d Blocks]\n", Block);
-   for(int i = 0 ; i < Block ; i++) { free(IV[i]); free(CT[i]); }
-   free(IV);
-   free(CT);
+   printf("[%d Blocks]\n", (int)(fileSize / 16));
    free(encryptedFile);
+   free(decryptedFile);
+
+   return time;
 }
 
 void RoundKeyGeneration128_Optimization(u8 *MK) {
@@ -331,7 +320,8 @@ int main(int argc, char* argv[]) {
    u8       DE[16] = { 0x00, };
    const u8      CT_REF[16] = { 0x84, 0xD4, 0xC9, 0xC0, 0x8B, 0x4F, 0x48, 0x28, 0x61, 0xE3, 0xA9, 0xC6, 0xC3, 0x5B, 0xC4, 0xD9 };
    int      keysize     = 128;
-   clock_t  start, finish;
+   clock_t  start = 0, finish = 0, time = 0;
+
 
 /*
    for(int i = 0 ; i < 44 ; i++) { printf("%08X ", W[i]); if(i % 4 == 3) puts(""); } puts("");
@@ -369,9 +359,7 @@ int main(int argc, char* argv[]) {
 
    if((strncmp(argv[3], "CTR", 3) == 0) || (strncmp(argv[3], "ctr", 3) == 0)) {
       puts("CTR");
-      start = clock();
-      AES_DEC_CTR(argv[1], argv[2], W);
-      finish = clock();
+      time = AES_DEC_CTR(argv[1], argv[2], W);
    } /* ECB 모드를 구현하는 것은 과제가 아님
    else if((strncmp(argv[3], "ECB", 3) == 0) || (strncmp(argv[3], "ecb", 3) == 0)) {
       puts("ecb");   
@@ -384,7 +372,7 @@ int main(int argc, char* argv[]) {
       return 0;
    }
 
-   printf("원본 파일\t%s\n해독 파일\t%s\n운영 모드\t%s\n연산 시간\t%f초\n", argv[1], argv[2], argv[3], (double)(finish - start) / CLOCKS_PER_SEC);
+   printf("원본 파일\t%s\n해독 파일\t%s\n운영 모드\t%s\n연산 시간\t%f초\n", argv[1], argv[2], argv[3], (double)time / CLOCKS_PER_SEC);
    
 
    return 0;
