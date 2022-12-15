@@ -2,19 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+	
+#define DIR "/Users/louxsoen/Documents/Univ/2학년 2학기/현대암호/과제 2022/현대암호_과제_3차_이서준/"
+#define traceFN "a.t"
+#define ptFN "cipher.txt"
+#define startpt 18000
+#define endpt 23000
 
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA/"
-#define traceFN "trace.bin"
-#define ptFN "plaintext.npy"
-#define startpt 0
-#define endpt 12000
-#define TraceNum 1000
 #define TraceLength 24000
+#define TraceNum 2000
 
 typedef unsigned char u8;
 
 static const u8    S[4][256] = {
-    // Sbox Type 1
 {
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -91,126 +91,153 @@ static const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
+
 int main()
 {
 	u8**		PT = NULL;
 	u8			iv, hw_iv; 
-	u8			MK[16];	 
-	double  	*Sx; 		// 전력
-	double		Sy;	  		// 해밍웨이트
-	double		*Sxx;
-	double		Syy;
-	double		*Sxy;
-	double	 	*corr;	
-	double		maxCorr; 
+	u8			MK[16], temp[32]; 
+	double		maxval; 
+	double  	*corr, *maxcorr;	
+	double		*Sxy, *Sxx, *Sx;
+	double		Sy, Syy; 
 	double		a, b, c;
-	float		**data;  		// 파형 전체 저장
-	int			key;
-	int			maxkey;
-	int			x, y;
-	int			i, j, k;
+	float	 	**data;
+	int			key, maxkey;
+	int			i, j, k, x, y;
 	char		buf[256];
 	double		cur, all;
 	FILE		*rfp, * wfp;
-
-	sprintf(buf, "%s%s", DIR, traceFN);
+	
+	snprintf(buf, sizeof(buf),"%s%s", DIR, traceFN);
 	rfp = fopen(buf, "rb");
 	if (rfp == NULL)
 		printf("%s 파일 읽기 오류", traceFN);
 	
+
 	data = (float**)calloc(TraceNum, sizeof(float*));
 	for (i = 0 ; i < TraceNum; i++)
 		data[i] = (float*)calloc(TraceLength, sizeof(float));
 	
-	for (i = 0; i < TraceNum; i++) {
+	for (i = 0; i < TraceNum; i++)
 		fread(data[i], sizeof(float), TraceLength, rfp);
-	}
 	fclose(rfp);
 
-	sprintf(buf, "%s%s", DIR, ptFN);
-	rfp = fopen(buf, "rb");
+	snprintf(buf, sizeof(buf), "%s%s", DIR, ptFN);
+	rfp = fopen(buf, "r");
 	if (rfp == NULL)
 		printf("%s 파일 읽기 오류", ptFN);
 
 	PT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
 		PT[i] = (u8*)calloc(16, sizeof(u8));
-	
-	for (i = 0; i < TraceNum; i++) {
-		fread(PT[i], sizeof(char), 16, rfp);
-	}
 
+	//for (i = 0; i < TraceNum; i++)
+	//	fread(PT[i], sizeof(char), 16, rfp);
+    for(i = 0 ; i < TraceNum ; i++)
+    {
+        fread(temp, sizeof(char), 32, rfp); // 한줄씩 읽기
+        for(j = 0 ; j < 16 ; j++)
+        {
+            x = temp[2 * j];            // 0x xy, 데이터 앞자리
+            y = temp[2 * j + 1];        // 0x xy, 데이터 뒷자리
+            // temp 배열을 x, y로 가져와서 아스키코드에 있는 숫자를 16진수로 반환
+            // '0'~'9', 'A'~'F', 'a'~'f'
+            if(x >= 'A' && x <= 'Z') x = x - 'A' + 10; 
+            else if(x >= 'a' && x <= 'z') x = x - 'a' + 10;
+            else if(x >= '0' && x <= '9') x -= '0';
+            // '0'~'9', 'A'~'F', 'a'~'f'
+            if(y >= 'A' && y <= 'Z') y = y - 'A' + 10; 
+            else if(y >= 'a' && y <= 'z') y = y - 'a' + 10;
+            else if(y >= '0' && y <= '9') y -= '0';
+
+            PT[i][j] = x * 16 + y;
+        }
+    }
+
+/*
+	sprintf(buf, "%s%s", DIR, ctFN);
+	rfp = fopen(buf, "r");
+	if (rfp == NULL)
+		printf("%s 파일 읽기 오류", ctFN); 
+	CT = (u8**)calloc(TraceNum, sizeof(u8*));
+	for (i = 0; i < TraceNum; i++)
+		CT[i] = (u8*)calloc(16, sizeof(u8));
+	
+	for (i = 0; i < TraceNum; i++)
+		fread(CT[i], sizeof(char), 16, rfp); */
 
 	corr = (double*)calloc(TraceLength, sizeof(double));
+	maxcorr = (double*)calloc(TraceLength, sizeof(double));
 	Sx = (double*)calloc(TraceLength, sizeof(double));
 	Sxx = (double*)calloc(TraceLength, sizeof(double));
 	Sxy = (double*)calloc(TraceLength, sizeof(double));
 
-	for (i = 0; i < TraceNum; i++)
-	{
+	for (i = 0; i < TraceNum; i++) {
 		for (j = startpt; j < endpt; j++) {
 			Sx[j] += data[i][j];
 			Sxx[j] += data[i][j] * data[i][j];
 		}
 	}
 
-	for (int i = 0; i < 16 ; i++)
-	{
-		maxCorr = 0;
+	for (int i = 0; i < 16 ; i++) {
+		maxval = 0;
 		maxkey = 0;
 		for (key = 0 ; key < 256; key++) {
 			Sy = 0;
 			Syy = 0;
 			memset(Sxy, 0, sizeof(double)*TraceLength);
-			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-               	iv = S[i % 4][PT[j][i] ^ key];
+			for (j = 0 ; j < TraceNum; j++) {
+				iv = S[i % 4][PT[j][i] ^ key];
 				hw_iv = 0;
 				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
 			
 				Sy += hw_iv;
-				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
+				Syy += hw_iv * hw_iv;
 				
-				for (k = startpt; k < endpt; k++) {
+				for (k = startpt; k < endpt; k++)
 					Sxy[k] += hw_iv * data[j][k];
-				} 
 			}
-
-			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
-
+			for (j = startpt; j < endpt; j++) { 
 				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
 				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
 				c = sqrt((double)TraceNum * Syy - Sy * Sy);
 
-				//printf("%lf %lf %lf\n", a, b, c);
-
 				corr[j] = a / (b * c);
-				if (fabs(corr[j]) > maxCorr) {
+				if (fabs(corr[j]) > maxval) {
 					maxkey = key;
-					maxCorr = fabs(corr[j]);
+					maxval = fabs(corr[j]);
 				}
+
 			}
-			if(key == 255)
-			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
-			else
-			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
-
-			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
 			fflush(stdout);
-			wfp = fopen(buf, "wb");
-			if (wfp == NULL)
-				printf("블록 쓰기 에러\n");
-			fwrite(corr, sizeof(double), TraceLength, wfp);
-			fclose(wfp);
-		}
-		
-		MK[i] = maxkey;
-	}
-	puts("");
+            if(key == 255)
+			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                         \n", i, maxkey, maxval);
 
+			else    
+			printf("\r%02dth Block : %.1lf%% CR[%lf] K[%02X]", i, ((double)key / 255) * 100, maxval, maxkey);
+			
+			if(key == maxkey) {
+				for(int al = 0 ; al < endpt ; al++)
+					maxcorr[al] = corr[al];
+			}
+        }
+		MK[i] = maxkey;
+		snprintf(buf, sizeof(buf) ,"%scorrdec.ct", DIR);
+		if(i == 0) 	wfp = fopen(buf, "wb");
+		else 		wfp = fopen(buf, "ab"); 
+		if(wfp == NULL)	  puts("블록 쓰기 에러");
+
+		fwrite(maxcorr, sizeof(double), TraceLength, wfp);
+		fclose(wfp);
+	}
+    puts("");
+	for(int i = 0 ; i < TraceNum ; i++) { free(PT[i]); free(data[i]); }
 	free(PT);
 	free(Sxy);
 	free(Sx);
 	free(Sxx);
 	free(data);
 	free(corr);
+	free(maxcorr);
 }

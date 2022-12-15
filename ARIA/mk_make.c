@@ -1,18 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <math.h>
-
-#define DIR "/Users/louxsoen/Documents/Univ/부채널연구/Traces/ARIA/"
-#define traceFN "trace.bin"
-#define ptFN "plaintext.npy"
-#define startpt 0
-#define endpt 12000
-#define TraceNum 1000
-#define TraceLength 24000
-
 typedef unsigned char u8;
-
 static const u8    S[4][256] = {
     // Sbox Type 1
 {
@@ -91,126 +79,107 @@ static const u8    S[4][256] = {
     0x25, 0x8a, 0xb5, 0xe7, 0x42, 0xb3, 0xc7, 0xea, 0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
     }
 };
-int main()
+
+void difflayer(u8 *out) {
+    u8 temp[16]; 
+    temp[ 0] = out[ 3] ^ out[ 4] ^ out[ 6] ^ out[ 8] ^ out[ 9] ^ out[13] ^ out[14];
+    temp[ 1] = out[ 2] ^ out[ 5] ^ out[ 7] ^ out[ 8] ^ out[ 9] ^ out[12] ^ out[15];
+    temp[ 2] = out[ 1] ^ out[ 4] ^ out[ 6] ^ out[10] ^ out[11] ^ out[12] ^ out[15];
+    temp[ 3] = out[ 0] ^ out[ 5] ^ out[ 7] ^ out[10] ^ out[11] ^ out[13] ^ out[14];  
+
+    temp[ 4] = out[ 0] ^ out[ 2] ^ out[ 5] ^ out[ 8] ^ out[11] ^ out[14] ^ out[15];
+    temp[ 5] = out[ 1] ^ out[ 3] ^ out[ 4] ^ out[ 9] ^ out[10] ^ out[14] ^ out[15];
+    temp[ 6] = out[ 0] ^ out[ 2] ^ out[ 7] ^ out[ 9] ^ out[10] ^ out[12] ^ out[13];
+    temp[ 7] = out[ 1] ^ out[ 3] ^ out[ 6] ^ out[ 8] ^ out[11] ^ out[12] ^ out[13];  
+
+    temp[ 8] = out[ 0] ^ out[ 1] ^ out[ 4] ^ out[ 7] ^ out[10] ^ out[13] ^ out[15];
+    temp[ 9] = out[ 0] ^ out[ 1] ^ out[ 5] ^ out[ 6] ^ out[11] ^ out[12] ^ out[14];
+    temp[10] = out[ 2] ^ out[ 3] ^ out[ 5] ^ out[ 6] ^ out[ 8] ^ out[13] ^ out[15];
+    temp[11] = out[ 2] ^ out[ 3] ^ out[ 4] ^ out[ 7] ^ out[ 9] ^ out[12] ^ out[14];  
+
+    temp[12] = out[ 1] ^ out[ 2] ^ out[ 6] ^ out[ 7] ^ out[ 9] ^ out[11] ^ out[12];
+    temp[13] = out[ 0] ^ out[ 3] ^ out[ 6] ^ out[ 7] ^ out[ 8] ^ out[10] ^ out[13];
+    temp[14] = out[ 0] ^ out[ 3] ^ out[ 4] ^ out[ 5] ^ out[ 9] ^ out[11] ^ out[14];
+    temp[15] = out[ 1] ^ out[ 2] ^ out[ 4] ^ out[ 5] ^ out[ 8] ^ out[10] ^ out[15];  
+
+    out[ 0] = temp[ 0]; out[ 1] = temp[ 1]; out[ 2] = temp[ 2]; out[ 3] = temp[ 3];
+    out[ 4] = temp[ 4]; out[ 5] = temp[ 5]; out[ 6] = temp[ 6]; out[ 7] = temp[ 7];
+    out[ 8] = temp[ 8]; out[ 9] = temp[ 9]; out[10] = temp[10]; out[11] = temp[11];
+   out[12] = temp[12]; out[13] = temp[13]; out[14] = temp[14]; out[15] = temp[15];
+}
+void RotateXOR(const u8 *IN, int n, u8 *OUT)
 {
-	u8**		PT = NULL;
-	u8			iv, hw_iv; 
-	u8			MK[16];	 
-	double  	*Sx; 		// 전력
-	double		Sy;	  		// 해밍웨이트
-	double		*Sxx;
-	double		Syy;
-	double		*Sxy;
-	double	 	*corr;	
-	double		maxCorr; 
-	double		a, b, c;
-	float		**data;  		// 파형 전체 저장
-	int			key;
-	int			maxkey;
-	int			x, y;
-	int			i, j, k;
-	char		buf[256];
-	double		cur, all;
-	FILE		*rfp, * wfp;
+    int     i;
+    int     q;
+    q = n / 8;  n %= 8;
+    for(i = 0 ; i < 16 ; i++) {
+        OUT[(q + i) % 16] ^= (IN[i] >> n);
+        if(n != 0) 
+        OUT[(q + i + 1) % 16] ^= (IN[i] << (8 - n));
+    }
+}
+void ror(u8 *p, int n) {
+    uint8_t     q, i;
+    uint8_t     t[16] = { 0x00, };
+    q = n / 8;  n %= 8;
+    for(i = 0 ; i < 16 ; i++) {
+        t[(q + i) % 16] ^= (p[i] >> n);
+        if(n != 0) t[(q + i + 1) % 16] ^= (p[i] << (8 - n));
+    }
+    for(i = 0 ; i < 16 ; i++) p[i] = t[i];
+}
 
-	sprintf(buf, "%s%s", DIR, traceFN);
-	rfp = fopen(buf, "rb");
-	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", traceFN);
-	
-	data = (float**)calloc(TraceNum, sizeof(float*));
-	for (i = 0 ; i < TraceNum; i++)
-		data[i] = (float*)calloc(TraceLength, sizeof(float));
-	
-	for (i = 0; i < TraceNum; i++) {
-		fread(data[i], sizeof(float), TraceLength, rfp);
-	}
-	fclose(rfp);
+void test1() {
+    u8      ek1[32] = { 0xCB, 0xF6 , 0xD7, 0x4C, 0x0B, 0x78, 0xB9, 0x30, 0x22, 0xB4, 0x7E, 0xAA, 0x06, 0xE7, 0x01, 0x2A };
+    u8      CK[16] = { 0x51, 0x7c, 0xc1, 0xb7, 0x27, 0x22, 0x0a, 0x94, 0xfe, 0x13, 0xab, 0xe8, 0xfa, 0x9a, 0x6e, 0xe0 };
+    u8      MK[16] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    u8      KL[16] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    u8      KR[16] = { 0x00, };
+    u8      TE[16] = { 0x00, };
+    //u8      ek1[16] = { 0x63, 0xcd, 0xf6, 0xc4, 0x8e, 0xa6, 0xab, 0x28, 0x84, 0x19, 0x46, 0x87, 0x62, 0xf0, 0xae, 0xe4 };
 
-	sprintf(buf, "%s%s", DIR, ptFN);
-	rfp = fopen(buf, "rb");
-	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", ptFN);
+/*
+    for(int i = 0 ; i < 16 ; i++) TE[i] = KL[i] ^ CK[i];
+    for(int i = 0 ; i < 16 ; i++) TE[i] ^= 0;
+    for(int i = 0 ; i < 16 ; i++) TE[i] = S[i % 4][TE[i]];
+    difflayer(TE);
+    RotateXOR(TE, 19, KR);
+    for(int i = 0 ; i < 16 ; i++) KR[i] ^= MK[i];
+    for(int i = 0 ; i < 16 ; i++) printf("%02x ", KR[i]);
+*/
+    //for(int i = 0 ; i < 16 ; i++) ek1[i] = S[i % 4][i];
+    //for(int i = 0 ; i < 16 ; i++) ek1[i] ^= CK[i];
+    
+    for(int i = 0 ; i < 16 ; i++) RotateXOR(KL, 32, MK);
+    for(int i = 0 ; i < 16 ; i++) printf("0x%02x, ", MK[i]);
+}
+void test2() {
+    u8      ek1[16] = { 0xCB, 0xF6 , 0xD7, 0x4C, 0x0B, 0x78, 0xB9, 0x30, 0x22, 0xB4, 0x7E, 0xAA, 0x06, 0xE7, 0x01, 0x2A };
+    u8      ek13[16] = { 0x9F, 0x6B, 0xDD, 0x65, 0xDB, 0x73, 0x71, 0x3B, 0xF8, 0xCF, 0x67, 0x77, 0xD9, 0xD1, 0x95, 0x9F };
+    u8      sk1[16] = { 0x00, };
+    u8      TE[16] = { 0x00, };
 
-	PT = (u8**)calloc(TraceNum, sizeof(u8*));
-	for (i = 0; i < TraceNum; i++)
-		PT[i] = (u8*)calloc(16, sizeof(u8));
-	
-	for (i = 0; i < TraceNum; i++) {
-		fread(PT[i], sizeof(char), 16, rfp);
-	}
+    ror(ek1, 78);
+    
+    for(int i = 0 ; i < 16 ; i++) TE[i] = ek1[i] ^ ek13[i];
 
+    for(int i = 0 ; i < 16 ; i++) printf("%02X ", TE[i]);
 
-	corr = (double*)calloc(TraceLength, sizeof(double));
-	Sx = (double*)calloc(TraceLength, sizeof(double));
-	Sxx = (double*)calloc(TraceLength, sizeof(double));
-	Sxy = (double*)calloc(TraceLength, sizeof(double));
+    //for(int i = 0 ; i < 16 ; i++) printf("0x%02X, ", TE[i]);
+    puts("");
+}
+void test3() {
+    u8      a[16] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    u8      b[16] = { 0x00, };
 
-	for (i = 0; i < TraceNum; i++)
-	{
-		for (j = startpt; j < endpt; j++) {
-			Sx[j] += data[i][j];
-			Sxx[j] += data[i][j] * data[i][j];
-		}
-	}
+    ror(a, 128);
+    for(int i = 0 ; i < 16 ; i++) printf("%02x ", a[i]);
+}
+void test4() {
 
-	for (int i = 0; i < 16 ; i++)
-	{
-		maxCorr = 0;
-		maxkey = 0;
-		for (key = 0 ; key < 256; key++) {
-			Sy = 0;
-			Syy = 0;
-			memset(Sxy, 0, sizeof(double)*TraceLength);
-			for (j = 0; j < TraceNum; j++) { // hw 구하는 곳
-               	iv = S[i % 4][PT[j][i] ^ key];
-				hw_iv = 0;
-				for (k = 0; k < 8; k++) hw_iv += ((iv >> k) & 1);
-			
-				Sy += hw_iv;
-				Syy += hw_iv * hw_iv; // 오버플로우 방지 스카우트
-				
-				for (k = startpt; k < endpt; k++) {
-					Sxy[k] += hw_iv * data[j][k];
-				} 
-			}
+}
+int main() {
+    test2();
+    //test3();
 
-			for (j = startpt; j < endpt; j++) { // 상관계수 구하는 곳
-
-				a = (double)TraceNum * Sxy[j] - Sx[j] * Sy;
-				b = sqrt((double)TraceNum * Sxx[j] - Sx[j] * Sx[j]);
-				c = sqrt((double)TraceNum * Syy - Sy * Sy);
-
-				//printf("%lf %lf %lf\n", a, b, c);
-
-				corr[j] = a / (b * c);
-				if (fabs(corr[j]) > maxCorr) {
-					maxkey = key;
-					maxCorr = fabs(corr[j]);
-				}
-			}
-			if(key == 255)
-			printf("\r  %02dth Block | KEY[%02X] CORR[%lf]                          \n", i, maxkey, maxCorr);
-			else
-			printf("\rProgress %.1lf%%  |  %02dth Block : %.1lf%% ", (((double)key / 255) * 100 / 16) + (100 / 16 * i), i, ((double)key / 255) * 100);
-
-			sprintf(buf, "%sct/%02d_%02X.corrtrace", DIR, i, key);
-			fflush(stdout);
-			wfp = fopen(buf, "wb");
-			if (wfp == NULL)
-				printf("블록 쓰기 에러\n");
-			fwrite(corr, sizeof(double), TraceLength, wfp);
-			fclose(wfp);
-		}
-		
-		MK[i] = maxkey;
-	}
-	puts("");
-
-	free(PT);
-	free(Sxy);
-	free(Sx);
-	free(Sxx);
-	free(data);
-	free(corr);
 }
