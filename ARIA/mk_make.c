@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
+
 typedef unsigned char u8;
 static const u8    S[4][256] = {
     // Sbox Type 1
@@ -169,17 +171,76 @@ void test2() {
     puts("");
 }
 void test3() {
-    u8      a[16] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    u8      a[16] = { 0x4F, 0xEC, 0x6E, 0x2F, 0xE7, 0xFA, 0x70, 0x1C, 0x42, 0x68, 0x98, 0x43, 0x9A, 0xB6, 0x38, 0x1E };
     u8      b[16] = { 0x00, };
 
     ror(a, 128);
     for(int i = 0 ; i < 16 ; i++) printf("%02x ", a[i]);
 }
-void test4() {
 
+void ext(u8 *result, const u8 *ORI, const u8 *SHF) {
+    
+}
+
+void test4() {
+    unsigned long long i, j, k;
+    u8      ref[16] = { 0x12, 0x2B, 0x21, 0x38, 0x6E, 0x1F, 0x5E, 0xEA, 0xD5, 0xED, 0x08, 0x76, 0xDA, 0xA9, 0xFF, 0x19 };
+    u8      T[128] = { 0x00, };
+    u8      shf[128] = { 0x00, };
+    u8      key0[128] = { 0x00, };
+    u8      key1[128] = { 0x00, };
+    int count = 0;
+
+    for (i = 0; i < 16; i++) {
+      for (j = 0; j < 8; j++) {
+         if (((ref[i] >> (7 - j)) & 1) == 1) T[8 * i + j] = 1;
+         else   T[8 * i + j] = 0;
+      }
+    }
+	int     idx;
+	key0[127] = 1; key1[126] = 1;
+    printf("case - MSB[%d] M-1[%d] -> (..%d%d)\n", key0[127], key1[126], key1[126], key0[127]);
+	count = 0;
+    idx = 127;
+	while (1) {
+		shf[idx] = key0[idx] ^ T[idx];
+		count++;
+		if (count == 64) break;
+		
+		if (idx < 50) {
+			key0[idx + 78] = shf[idx];
+			idx += 78;
+        }
+		else {
+			key0[idx - 50] = shf[idx];
+            idx -= 50;
+		}
+	}
+	idx = 126;
+	while (1) {
+		shf[idx] = key1[idx] ^ T[idx]; 
+		count++;
+		if (count == 64) break;
+
+		if (idx < 50) {
+			key1[idx + 78] = shf[idx];
+			idx += 78;
+		}
+
+		else {
+			key1[idx - 50] = shf[idx];
+			idx -= 50;
+		}
+	}
+
+	for (i = 0; i < 128; i++) printf("%1d", key0[i]); puts(" <- MSB (-N)"); 
+	for (i = 0; i < 128; i++) printf("%1d", key1[i]); puts(" <- M-1 (N-)");  
+	for (i = 0; i < 128; i++) printf("%1d", key0[i] ^ key1[i]); puts(" <- XOR (NN)"); 
+    fflush(stdout);
 }
 int main() {
-    test2();
+    
+    //test2();
     //test3();
-
+    test4();
 }
