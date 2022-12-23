@@ -5,7 +5,7 @@
 	
 #define DIR "/Users/louxsoen/Documents/Univ/2학년 2학기/현대암호/과제 2022/현대암호_과제_3차_이서준/"
 #define traceFN "a.t"
-#define ptFN "cipher.txt"
+#define inFN "cipher.txt"
 #define startpt 18000
 #define endpt 23000
 
@@ -92,7 +92,7 @@ static const u8    S[4][256] = {
     }
 };
 
-int main()
+void AIRA_CPA2()
 {
 	u8**		PT = NULL;
 	u8			iv, hw_iv; 
@@ -123,10 +123,10 @@ int main()
 		fread(data[i], sizeof(float), TraceLength, rfp);
 	fclose(rfp);
 
-	snprintf(buf, sizeof(buf), "%s%s", DIR, ptFN);
+	snprintf(buf, sizeof(buf), "%s%s", DIR, inFN);
 	rfp = fopen(buf, "r");
 	if (rfp == NULL)
-		printf("%s 파일 읽기 오류", ptFN);
+		printf("%s 파일 읽기 오류", inFN);
 
 	PT = (u8**)calloc(TraceNum, sizeof(u8*));
 	for (i = 0; i < TraceNum; i++)
@@ -240,4 +240,81 @@ int main()
 	free(data);
 	free(corr);
 	free(maxcorr);
+}
+
+void ror(u8 *p, int n) {
+    uint8_t     q, i;
+    uint8_t     t[16] = { 0x00, };
+    q = n / 8;  n %= 8;
+    for(i = 0 ; i < 16 ; i++) {
+        t[(q + i) % 16] ^= (p[i] >> n);
+        if(n != 0) t[(q + i + 1) % 16] ^= (p[i] << (8 - n));
+    }
+    for(i = 0 ; i < 16 ; i++) p[i] = t[i];
+}
+
+void recover_mk() {
+	
+	u8      ek1[16] = { 0xCB, 0xF6 , 0xD7, 0x4C, 0x0B, 0x78, 0xB9, 0x30, 0x22, 0xB4, 0x7E, 0xAA, 0x06, 0xE7, 0x01, 0x2A };
+    u8      ek13[16] = { 0x9F, 0x6B, 0xDD, 0x65, 0xDB, 0x73, 0x71, 0x3B, 0xF8, 0xCF, 0x67, 0x77, 0xD9, 0xD1, 0x95, 0x9F };
+	u8      ref[16] = { 0x12, 0x2B, 0x21, 0x38, 0x6E, 0x1F, 0x5E, 0xEA, 0xD5, 0xED, 0x08, 0x76, 0xDA, 0xA9, 0xFF, 0x19 };
+	u8      T[128] = { 0x00, };
+    u8      tmp[128] = { 0x00, };
+    u8      key0[128] = { 0x00, };
+    u8      key1[128] = { 0x00, };
+	int 	cnt = 0;
+	int 	idx = 0;
+	
+	ror(ek1, 78);
+	for(int i = 0 ; i < 16 ; i++) ref[i] = ek1[i] ^ ek13[i];
+	ror(ref, 50);
+	for(int i = 0 ; i < 16 ; i++) printf("%02X ", ref[i]);
+	puts("");
+
+
+	for(int i = 0 ; i < 16 ; i++) {
+		for(int j = 0 ; j < 8 ; j++) 
+			T[i * 8 + j] = (ref[i] >> (7 - j)) & 0b1 ? 1 : 0;
+	}
+
+	for(int i = 0 ; i < 128 ; i++) printf("%1d", T[i]);
+	puts("");
+	
+	key0[127] = 0; key1[126] = 0; // 값을 바꿔가며 확인
+
+    printf("case - MSB[%d] M-1[%d] -> (..%d%d)\n", key0[127], key1[126], key1[126], key0[127]);
+
+	// 홀수번째 비트추출 127 125 123 ... 1
+	for(idx = 127, cnt = 0 ; cnt < 65; cnt++) {
+		tmp[idx] = key0[idx] ^ T[idx];
+		if(idx < 50) {
+			key0[idx + 78] = tmp[idx]; idx += 78; 
+		}
+		else {
+			key0[idx - 50] = tmp[idx]; idx -= 50;
+		}
+	}
+	// 짝수번째 비트 추출 126 124 122 ... 0
+	for(idx = 126, cnt = 0 ; cnt < 65 ; cnt++) {
+		tmp[idx] = key1[idx] ^ T[idx];
+		if (idx < 50) {
+			key1[idx + 78] = tmp[idx]; idx += 78;
+		}
+		else {
+			key1[idx - 50] = tmp[idx]; idx -= 50;
+		}
+	}
+
+
+
+
+	for (int i = 0; i < 128; i++) printf("%1d", key0[i]); puts(" <- MSB (-N)"); 
+	for (int i = 0; i < 128; i++) printf("%1d", key1[i]); puts(" <- M-1 (N-)");  
+	for (int i = 0; i < 128; i++) printf("%1d", key0[i] ^ key1[i]); puts(" <- XOR (NN)"); 
+    fflush(stdout);
+}
+
+int main() {
+	//AIRA_CPA2();
+	recover_mk();
 }

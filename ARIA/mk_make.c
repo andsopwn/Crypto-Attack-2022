@@ -178,10 +178,6 @@ void test3() {
     for(int i = 0 ; i < 16 ; i++) printf("%02x ", a[i]);
 }
 
-void ext(u8 *result, const u8 *ORI, const u8 *SHF) {
-    
-}
-
 void test4() {
     unsigned long long i, j, k;
     u8      ref[16] = { 0x12, 0x2B, 0x21, 0x38, 0x6E, 0x1F, 0x5E, 0xEA, 0xD5, 0xED, 0x08, 0x76, 0xDA, 0xA9, 0xFF, 0x19 };
@@ -197,8 +193,10 @@ void test4() {
          else   T[8 * i + j] = 0;
       }
     }
+    for(int i = 0 ; i < 128 ; i++) printf("%1d", T[i]);
+    puts("\n\n");
 	int     idx;
-	key0[127] = 1; key1[126] = 1;
+	key0[127] = 0; key1[126] = 0;
     printf("case - MSB[%d] M-1[%d] -> (..%d%d)\n", key0[127], key1[126], key1[126], key0[127]);
 	count = 0;
     idx = 127;
@@ -217,6 +215,7 @@ void test4() {
 		}
 	}
 	idx = 126;
+    count = 0;
 	while (1) {
 		shf[idx] = key1[idx] ^ T[idx]; 
 		count++;
